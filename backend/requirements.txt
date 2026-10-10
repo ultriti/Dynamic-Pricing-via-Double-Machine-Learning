@@ -1,0 +1,34 @@
+# Data processing
+numpy
+pandas
+
+# Machine Learning
+scikit-learn
+econml
+dowhy
+
+# Optimization
+scipy
+
+# Model saving and loading
+joblib
+
+# FastAPI backend
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic-settings
+
+# Environment variables
+python-dotenv
+
+# HTTP requests
+httpx
+
+# Visualization and analysis
+matplotlib
+plotly
+
+# Testing
+pytest

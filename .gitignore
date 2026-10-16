@@ -40,9 +40,9 @@ secrets.json
 # --------------------
 # Jupyter Notebook
 
-.ipynb_checkpoints/
-*/.ipynb_checkpoints/
-*.ipynb
+# .ipynb_checkpoints/
+# */.ipynb_checkpoints/
+# *.ipynb
 
 # --------------------
 # Machine Learning Models

@@ -1,77 +1,98 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import "./HomePage.css";
+import { useState } from 'react';
 
-const HomePage = () => {
+function HomePage() {
+  const [activeTab, setActiveTab] = useState('Overview');
+  const [message, setMessage] = useState("");
+
   return (
-    <div className="home">
-      <h1 className="page-title">Overview</h1>
-      <p className="page-desc">Dynamic pricing via causal inference</p>
-
-      {/* Hero Banner */}
-      <div className="hero">
-        <span className="hero-tag">Anywhere & Anytime</span>
-        <h2>Estimate Causal<br />Treatment Effects</h2>
-        <p>
-          Upload your e-mail campaign dataset and discover the true impact
-          of marketing treatments on customer conversions using Double Machine Learning.
-        </p>
-        <div className="hero-btns">
-          <Link to="/upload" className="btn-gradient">Upload dataset</Link>
-          <Link to="/eda" className="btn-outline">View analysis</Link>
-        </div>
+    <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif' }}>
+      
+      {/* SIDEBAR */}
+      <div style={{ width: '250px', borderRight: '1px solid #e0e0e0', padding: '20px' }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 'bold' }}>EconoCausal</h2>
+        <ul style={{ listStyleType: 'none', padding: 0, marginTop: '30px' }}>
+          
+          <li 
+            onClick={() => setActiveTab('Overview')}
+            style={{ padding: '10px', backgroundColor: activeTab === 'Overview' ? '#f3e8ff' : 'transparent', color: activeTab === 'Overview' ? '#6b21a8' : '#666', borderRadius: '8px', marginBottom: '10px', cursor: 'pointer' }}>
+            Overview
+          </li>
+          
+          <li 
+            onClick={() => setActiveTab('Upload')}
+            style={{ padding: '10px', backgroundColor: activeTab === 'Upload' ? '#f3e8ff' : 'transparent', color: activeTab === 'Upload' ? '#6b21a8' : '#666', borderRadius: '8px', marginBottom: '10px', cursor: 'pointer' }}>
+            Upload
+          </li>
+          
+          <li 
+            onClick={() => setActiveTab('Analysis')}
+            style={{ padding: '10px', backgroundColor: activeTab === 'Analysis' ? '#f3e8ff' : 'transparent', color: activeTab === 'Analysis' ? '#6b21a8' : '#666', borderRadius: '8px', marginBottom: '10px', cursor: 'pointer' }}>
+            Analysis
+          </li>
+          
+        </ul>
       </div>
 
-      {/* Steps */}
-      <div className="steps-section">
-        <div className="step-card">
-          <div className="step-num">01</div>
-          <h3>Upload CSV</h3>
-          <p>Upload the raw Hillstrom dataset. The system validates your schema automatically.</p>
-        </div>
-        <div className="step-card">
-          <div className="step-num">02</div>
-          <h3>Explore data</h3>
-          <p>View distributions, correlations, segment breakdowns, and summary statistics.</p>
-        </div>
-        <div className="step-card">
-          <div className="step-num">03</div>
-          <h3>Causal analysis</h3>
-          <p>Estimate treatment effects of email campaigns on conversion using DML.</p>
-        </div>
-      </div>
+      {/* MAIN CONTENT AREA */}
+      <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
+        
+        {/* OVERVIEW TAB */}
+        {activeTab === 'Overview' && (
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>Overview</h1>
+            <p style={{ color: '#666', marginBottom: '30px' }}>Dynamic pricing via causal inference</p>
 
-      {/* Schema */}
-      <div className="schema-card">
-        <div className="schema-head">Expected schema</div>
-        <div className="schema-scroll">
-          <table className="schema-tbl">
-            <thead>
-              <tr>
-                <th>Column</th>
-                <th>Role</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>recency</td><td><span className="badge feature">Feature</span></td><td>Months since last purchase</td></tr>
-              <tr><td>history</td><td><span className="badge feature">Feature</span></td><td>Dollar value of past purchases</td></tr>
-              <tr><td>mens</td><td><span className="badge feature">Feature</span></td><td>Purchased from mens category (0/1)</td></tr>
-              <tr><td>womens</td><td><span className="badge feature">Feature</span></td><td>Purchased from womens category (0/1)</td></tr>
-              <tr><td>zip_code</td><td><span className="badge feature">Feature</span></td><td>Urban / Suburban / Rural</td></tr>
-              <tr><td>newbie</td><td><span className="badge feature">Feature</span></td><td>New customer flag (0/1)</td></tr>
-              <tr><td>channel</td><td><span className="badge feature">Feature</span></td><td>Phone / Web / Multichannel</td></tr>
-              <tr><td>history_segment</td><td><span className="badge meta">Meta</span></td><td>Binned history ranges</td></tr>
-              <tr><td>segment</td><td><span className="badge treatment">Treatment</span></td><td>Mens E-Mail / Womens E-Mail / No E-Mail</td></tr>
-              <tr><td>visit</td><td><span className="badge outcome">Outcome</span></td><td>Visited site after campaign (0/1)</td></tr>
-              <tr><td>conversion</td><td><span className="badge outcome">Outcome</span></td><td>Made a purchase (0/1)</td></tr>
-              <tr><td>spend</td><td><span className="badge outcome">Outcome</span></td><td>Dollar amount spent</td></tr>
-            </tbody>
-          </table>
-        </div>
+            <div style={{ backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '60px 20px', textAlign: 'center', marginBottom: '30px' }}>
+              <p style={{ color: '#9333ea', fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px' }}>ANYWHERE & ANYTIME</p>
+              <h1 style={{ fontSize: '36px', fontWeight: '900', margin: '10px 0' }}>Estimate Causal<br/>Treatment Effects</h1>
+              <p style={{ color: '#666', maxWidth: '500px', margin: '0 auto 20px auto' }}>Upload your e-mail campaign dataset and discover the true impact.</p>
+              
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
+                <button onClick={() => setMessage("Backend not ready!")} style={{ backgroundColor: '#7c3aed', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Upload dataset</button>
+                <button style={{ backgroundColor: 'white', color: 'black', border: '1px solid #ccc', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>View analysis</button>
+              </div>
+              {message && <p style={{ color: 'red', marginTop: '10px' }}>{message}</p>}
+            </div>
+
+            <div style={{ display: 'flex', gap: '20px' }}>
+              <div style={{ flex: 1, border: '1px solid #e0e0e0', borderRadius: '12px', padding: '20px' }}>
+                <h3 style={{ color: '#ccc', fontSize: '24px', margin: '0 0 10px 0' }}>01</h3>
+                <h4 style={{ margin: '0 0 10px 0' }}>Upload CSV</h4>
+                <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>Upload the raw dataset. The system validates your schema automatically.</p>
+              </div>
+              <div style={{ flex: 1, border: '1px solid #e0e0e0', borderRadius: '12px', padding: '20px' }}>
+                <h3 style={{ color: '#ccc', fontSize: '24px', margin: '0 0 10px 0' }}>02</h3>
+                <h4 style={{ margin: '0 0 10px 0' }}>Explore data</h4>
+                <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>View distributions, correlations, and summary statistics.</p>
+              </div>
+              <div style={{ flex: 1, border: '1px solid #e0e0e0', borderRadius: '12px', padding: '20px' }}>
+                <h3 style={{ color: '#ccc', fontSize: '24px', margin: '0 0 10px 0' }}>03</h3>
+                <h4 style={{ margin: '0 0 10px 0' }}>Causal analysis</h4>
+                <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>Estimate treatment effects using DML.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* UPLOAD TAB (Placeholder for your teammate's code) */}
+        {activeTab === 'Upload' && (
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>Upload Page</h1>
+            <p style={{ color: '#666' }}>Your teammate will build this page here.</p>
+          </div>
+        )}
+
+        {/* ANALYSIS TAB (Placeholder for your teammate's code) */}
+        {activeTab === 'Analysis' && (
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>Analysis Page</h1>
+            <p style={{ color: '#666' }}>Your teammate will build this page here.</p>
+          </div>
+        )}
+
       </div>
     </div>
   );
-};
+}
 
 export default HomePage;

@@ -9,7 +9,7 @@ function UpliftChart() {
 
   return (
     <div style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', marginTop: '20px' }}>
-      <h3 style={{ marginBottom: '20px' }}>Uplift Curve (Week 2 Task)</h3>
+      <h3 style={{ marginBottom: '20px' }}>Uplift Curve</h3>
       <Plot
         data={[
           {

@@ -1,12 +1,14 @@
 import { Link } from "react-router-dom";
 import UpliftChart from "../components/UpliftChart";
+import AllocationMatrix from "../components/AllocationMatrix";
+import './HomePage.css';
 function HomePage() {
   return (
     <div style={{ fontFamily: "sans-serif" }}>
       <h1 style={{ fontSize: "24px", fontWeight: "bold" }}>Overview</h1>
       <p style={{ color: "#666", marginBottom: "30px" }}>Dynamic pricing via causal inference</p>
 
-      
+
 
 
       <div style={{ backgroundColor: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: "16px", padding: "60px 20px", textAlign: "center", marginBottom: "30px" }}>
@@ -20,25 +22,33 @@ function HomePage() {
       </div>
 
       <div style={{ display: "flex", gap: "20px" }}>
-        <div style={{ flex: 1, border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
-          <h3 style={{ color: "#ccc", fontSize: "24px", margin: "0 0 10px" }}>01</h3>
-          <h4 style={{ margin: "0 0 10px" }}>Upload CSV</h4>
-          <p style={{ color: "#666", fontSize: "14px", margin: "0 0 12px" }}>Upload the raw dataset. The system validates your schema automatically.</p>
-          <Link to="/upload">Upload a dataset</Link>
+        {/* Steps */}
+        <div className="steps-section">
+          <div className="step-card">
+            <div className="step-num">01</div>
+            <h3>Upload CSV</h3>
+            <p>Upload the raw dataset. The system validates your schema automatically.</p>
+            <Link to="/upload">Upload a dataset</Link>
+          </div>
+
+          <div className="step-card">
+            <div className="step-num">02</div>
+            <h3>Explore data</h3>
+            <p>View distributions, correlations, and summary statistics.</p>
+            <Link to="/eda">Explore analysis</Link>
+          </div>
+
+          <div className="step-card">
+            <div className="step-num">03</div>
+            <h3>Causal analysis</h3>
+            <p>Estimate treatment effects using DML.</p>
+          </div>
         </div>
-        <div style={{ flex: 1, border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
-          <h3 style={{ color: "#ccc", fontSize: "24px", margin: "0 0 10px" }}>02</h3>
-          <h4 style={{ margin: "0 0 10px" }}>Explore data</h4>
-          <p style={{ color: "#666", fontSize: "14px", margin: "0 0 12px" }}>View distributions, correlations, and summary statistics.</p>
-          <Link to="/eda">Explore analysis</Link>
-        </div>
-        <div style={{ flex: 1, border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
-          <h3 style={{ color: "#ccc", fontSize: "24px", margin: "0 0 10px" }}>03</h3>
-          <h4 style={{ margin: "0 0 10px" }}>Causal analysis</h4>
-          <p style={{ color: "#666", fontSize: "14px", margin: 0 }}>Estimate treatment effects using DML.</p>
-        </div>
-        <div style={{marginTop: '40px'}}>
+        {/* Your Chart */}
+
+        <div style={{ marginTop: '40px' }}>
           <UpliftChart />
+          <AllocationMatrix />
         </div>
       </div>
     </div>

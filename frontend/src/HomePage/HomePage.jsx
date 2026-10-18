@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom";
-
+import UpliftChart from "../components/UpliftChart";
 function HomePage() {
   return (
     <div style={{ fontFamily: "sans-serif" }}>
       <h1 style={{ fontSize: "24px", fontWeight: "bold" }}>Overview</h1>
       <p style={{ color: "#666", marginBottom: "30px" }}>Dynamic pricing via causal inference</p>
+
+      
+
 
       <div style={{ backgroundColor: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: "16px", padding: "60px 20px", textAlign: "center", marginBottom: "30px" }}>
         <p style={{ color: "#9333ea", fontSize: "12px", fontWeight: "bold", letterSpacing: "1px" }}>ANYWHERE &amp; ANYTIME</p>
@@ -33,6 +36,9 @@ function HomePage() {
           <h3 style={{ color: "#ccc", fontSize: "24px", margin: "0 0 10px" }}>03</h3>
           <h4 style={{ margin: "0 0 10px" }}>Causal analysis</h4>
           <p style={{ color: "#666", fontSize: "14px", margin: 0 }}>Estimate treatment effects using DML.</p>
+        </div>
+        <div style={{marginTop: '40px'}}>
+          <UpliftChart />
         </div>
       </div>
     </div>

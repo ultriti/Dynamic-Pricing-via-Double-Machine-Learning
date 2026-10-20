@@ -1,56 +1,150 @@
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import UpliftChart from "../components/UpliftChart";
-import AllocationMatrix from "../components/AllocationMatrix";
-import './HomePage.css';
+import { ArrowRight, Database, Eye, Upload, Users } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import ChartCard from "../components/ChartCard";
+import { EmptyState as Empty, ErrorMessage, LoadingSpinner } from "../components/Feedback";
+import StatCard from "../components/StatCard";
+import { fetchDatasetSummary, getApiErrorMessage } from "../services/api";
+
 function HomePage() {
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadSummary = useCallback(async () => {
+    try {
+      setSummary(await fetchDatasetSummary());
+    } catch (requestError) {
+      if (requestError.response?.status === 404) {
+        setSummary(null);
+      } else {
+        setError(getApiErrorMessage(requestError));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetchDatasetSummary()
+      .then((data) => {
+        if (active) setSummary(data);
+      })
+      .catch((requestError) => {
+        if (!active) return;
+        if (requestError.response?.status !== 404) {
+          setError(getApiErrorMessage(requestError));
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const refreshSummary = () => {
+    setLoading(true);
+    setError(null);
+    loadSummary();
+  };
+
+  const treatmentGroups = Object.entries(summary?.treatment_group_counts ?? {}).map(
+    ([name, customers]) => ({ name, customers }),
+  );
+
   return (
-    <div style={{ fontFamily: "sans-serif" }}>
-      <h1 style={{ fontSize: "24px", fontWeight: "bold" }}>Overview</h1>
-      <p style={{ color: "#666", marginBottom: "30px" }}>Dynamic pricing via causal inference</p>
-
-
-
-
-      <div style={{ backgroundColor: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: "16px", padding: "60px 20px", textAlign: "center", marginBottom: "30px" }}>
-        <p style={{ color: "#9333ea", fontSize: "12px", fontWeight: "bold", letterSpacing: "1px" }}>ANYWHERE &amp; ANYTIME</p>
-        <h2 style={{ fontSize: "36px", fontWeight: "900", margin: "10px 0" }}>Estimate Causal<br />Treatment Effects</h2>
-        <p style={{ color: "#666", maxWidth: "500px", margin: "0 auto 20px" }}>Upload your e-mail campaign dataset and discover the true impact.</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: "15px" }}>
-          <Link to="/upload" style={{ backgroundColor: "#7c3aed", color: "white", padding: "12px 24px", borderRadius: "8px", fontWeight: "bold" }}>Upload dataset</Link>
-          <Link to="/eda" style={{ backgroundColor: "white", color: "black", border: "1px solid #ccc", padding: "12px 24px", borderRadius: "8px", fontWeight: "bold" }}>View analysis</Link>
+    <div className="page">
+      <div className="page-heading">
+        <div>
+          <h1>EconoCausal Dashboard</h1>
+          <p>Explore customer data and prepare datasets for causal inference analysis.</p>
         </div>
+        <Link className="button button-primary" to="/upload">
+          <Upload size={17} aria-hidden="true" /> Upload dataset
+        </Link>
       </div>
 
-      <div style={{ display: "flex", gap: "20px" }}>
-        {/* Steps */}
-        <div className="steps-section">
-          <div className="step-card">
-            <div className="step-num">01</div>
-            <h3>Upload CSV</h3>
-            <p>Upload the raw dataset. The system validates your schema automatically.</p>
-            <Link to="/upload">Upload a dataset</Link>
+      {loading ? (
+        <LoadingSpinner />
+      ) : error ? (
+        <section className="panel dashboard-empty">
+          <ErrorMessage message={error} onRetry={refreshSummary} />
+        </section>
+      ) : summary ? (
+        <>
+          <div className="stats-grid">
+            <StatCard label="Total Customers" value={summary.rows?.toLocaleString() ?? "—"} icon={Users} />
+            <StatCard label="Conversion Rate" value={summary.conversion_rate_percent == null ? "—" : `${summary.conversion_rate_percent}%`} note="Observed conversions" icon={Database} />
+            <StatCard label="Total Spend" value={summary.total_spend == null ? "—" : `$${Number(summary.total_spend).toLocaleString()}`} icon={Database} />
+            <StatCard label="Visit Rate" value={summary.visit_rate_percent == null ? "—" : `${summary.visit_rate_percent}%`} note="Observed visits" icon={Eye} />
           </div>
 
-          <div className="step-card">
-            <div className="step-num">02</div>
-            <h3>Explore data</h3>
-            <p>View distributions, correlations, and summary statistics.</p>
-            <Link to="/eda">Explore analysis</Link>
-          </div>
+          <div className="dashboard-grid">
+            <ChartCard
+              title="Marketing treatment groups"
+              subtitle="Customer counts by email campaign segment"
+            >
+              {treatmentGroups.length ? (
+                <div className="chart-frame">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={treatmentGroups} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" tickLine={false} />
+                      <YAxis allowDecimals={false} tickLine={false} />
+                      <Tooltip />
+                      <Bar dataKey="customers" fill="#4f46e5" radius={[5, 5, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <Empty title="Treatment groups unavailable" />
+              )}
+            </ChartCard>
 
-          <div className="step-card">
-            <div className="step-num">03</div>
-            <h3>Causal analysis</h3>
-            <p>Estimate treatment effects using DML.</p>
+            <section className="panel dataset-status">
+              <div className="panel-heading">
+                <div>
+                  <h2>Dataset status</h2>
+                  <p>Current dataset overview</p>
+                </div>
+                <Database size={19} aria-hidden="true" />
+              </div>
+              <dl className="status-list">
+                <div><dt>Status</dt><dd><span className="status-pill">Dataset uploaded</span></dd></div>
+                <div><dt>Dimensions</dt><dd>{summary.rows?.toLocaleString()} rows × {summary.columns} columns</dd></div>
+                <div><dt>Missing values</dt><dd>{summary.missing_values?.toLocaleString() ?? "—"}</dd></div>
+                <div><dt>Average spend</dt><dd>{summary.average_spend == null ? "—" : `$${Number(summary.average_spend).toLocaleString()}`}</dd></div>
+              </dl>
+              <div className="inline-actions">
+                <Link className="button button-secondary" to="/preview"><Eye size={16} /> Preview data</Link>
+                <Link className="button button-secondary" to="/eda">Explore EDA <ArrowRight size={16} /></Link>
+              </div>
+            </section>
           </div>
-        </div>
-        {/* Your Chart */}
-
-        <div style={{ marginTop: '40px' }}>
-          <UpliftChart />
-          <AllocationMatrix />
-        </div>
-      </div>
+          <p className="causal-note">
+            This dataset describes email marketing campaigns. It does not measure the causal effect of specific discount amounts.
+          </p>
+        </>
+      ) : (
+        <section className="panel dashboard-empty">
+          <Empty title="Upload a dataset to get started">
+            Dashboard statistics and charts will appear here after you upload a valid Hillstrom CSV.
+          </Empty>
+          <Link className="button button-primary" to="/upload"><Upload size={17} /> Upload dataset</Link>
+        </section>
+      )}
     </div>
   );
 }

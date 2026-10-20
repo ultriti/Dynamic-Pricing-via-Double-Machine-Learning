@@ -1,43 +1,55 @@
-import React from 'react';
-import Plot from 'react-plotly.js';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import ChartCard from "./ChartCard";
+import { EmptyState } from "./Feedback";
 
-function UpliftChart() {
-  // Fake data for the chart
-  const xValues = [0, 1000, 2000, 3000, 4000, 5000];
-  const modelCurve = [0, 500, 1200, 1800, 2100, 2300];
-  const randomCurve = [0, 300, 600, 900, 1200, 1500];
+function UpliftChart({ customers }) {
+  const estimates = customers
+    .map((customer) => Number(customer.ite))
+    .filter(Number.isFinite);
+  if (!estimates.length) {
+    return <ChartCard title="Estimated ITE distribution"><EmptyState title="No valid model estimates" /></ChartCard>;
+  }
+
+  const minimum = Math.min(...estimates);
+  const maximum = Math.max(...estimates);
+  const binCount = Math.min(12, Math.max(1, Math.ceil(Math.sqrt(estimates.length))));
+  const width = maximum === minimum ? 1 : (maximum - minimum) / binCount;
+  const bins = Array.from({ length: binCount }, (_, index) => {
+    const lower = minimum + index * width;
+    return {
+      label: maximum === minimum ? lower.toFixed(3) : `${lower.toFixed(3)}–${(lower + width).toFixed(3)}`,
+      count: 0,
+    };
+  });
+  estimates.forEach((value) => {
+    const index = maximum === minimum
+      ? 0
+      : Math.min(binCount - 1, Math.floor((value - minimum) / width));
+    bins[index].count += 1;
+  });
 
   return (
-    <div style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', marginTop: '20px' }}>
-      <h3 style={{ marginBottom: '20px' }}>Uplift Curve</h3>
-      <Plot
-        data={[
-          {
-            x: xValues,
-            y: modelCurve,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Causal Model',
-            line: { color: '#7c3aed', width: 3 }
-          },
-          {
-            x: xValues,
-            y: randomCurve,
-            type: 'scatter',
-            mode: 'lines',
-            name: 'Random Targeting',
-            line: { color: '#ccc', dash: 'dash', width: 2 }
-          }
-        ]}
-        layout={{
-          width: 700,
-          height: 400,
-          xaxis: { title: 'Number of Customers Targeted' },
-          yaxis: { title: 'Incremental Conversion' },
-          legend: { orientation: 'h', y: -0.2 }
-        }}
-      />
-    </div>
+    <ChartCard title="Estimated ITE distribution" subtitle="Distribution of outputs from the saved model">
+      <div className="chart-frame">
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={bins}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="label" tickLine={false} />
+            <YAxis allowDecimals={false} tickLine={false} />
+            <Tooltip />
+            <Bar dataKey="count" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </ChartCard>
   );
 }
 

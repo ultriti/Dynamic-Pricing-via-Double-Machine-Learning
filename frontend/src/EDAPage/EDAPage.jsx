@@ -1,262 +1,299 @@
-import React, { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import ChartCard from "../components/ChartCard";
+import { EmptyState, ErrorMessage, LoadingSpinner } from "../components/Feedback";
+import StatCard from "../components/StatCard";
+import {
+  fetchColumnDistribution,
+  fetchColumnStatistics,
+  fetchCorrelationMatrix,
+  fetchDatasetSummary,
+  fetchScatterPlot,
+  getApiErrorMessage,
+} from "../services/api";
 import "./EDAPage.css";
 
-const API = "http://localhost:8000";
+const asChartData = (result) =>
+  result.labels.map((label, index) => ({ label, count: result.values[index] }));
 
-const EDAPage = () => {
+function EDAPage() {
   const [summary, setSummary] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [columnStats, setColumnStats] = useState(null);
   const [correlation, setCorrelation] = useState(null);
-  const [selectedCol, setSelectedCol] = useState("recency");
-  const [distribution, setDistribution] = useState(null);
-  const [valueCounts, setValueCounts] = useState(null);
-  const [vcColumn, setVcColumn] = useState("segment");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState(null);
+  const [ready, setReady] = useState(false);
+  const [selectedColumn, setSelectedColumn] = useState("history");
+  const [distributionState, setDistributionState] = useState(null);
+  const [xColumn, setXColumn] = useState("history");
+  const [yColumn, setYColumn] = useState("spend");
+  const [scatterState, setScatterState] = useState(null);
 
-  const categoricalCols = ["history_segment", "zip_code", "channel", "segment"];
-  const numericCols = ["recency", "history", "mens", "womens", "newbie", "visit", "conversion", "spend"];
-
-  useEffect(() => { fetchAll(); }, []);
-
-  useEffect(() => {
-    if (!loading && !error) fetchDistribution(selectedCol);
-  }, [selectedCol]);
-
-  useEffect(() => {
-    if (!loading && !error) fetchValueCounts(vcColumn);
-  }, [vcColumn]);
-
-  const fetchAll = async () => {
+  const loadOverview = useCallback(async () => {
     try {
-      setLoading(true);
-      const [s, p, c] = await Promise.all([
-        fetch(`${API}/api/dataset/summary`),
-        fetch(`${API}/api/dataset/preview`),
-        fetch(`${API}/api/dataset/correlation`),
+      const [datasetSummary, stats, matrix] = await Promise.all([
+        fetchDatasetSummary(),
+        fetchColumnStatistics(),
+        fetchCorrelationMatrix(),
       ]);
-      if (!s.ok) throw new Error("No dataset uploaded. Upload a file first.");
-      setSummary(await s.json());
-      setPreview(await p.json());
-      setCorrelation(await c.json());
-      await fetchDistribution("recency");
-      await fetchValueCounts("segment");
-    } catch (err) {
-      setError(err.message);
+      setSummary(datasetSummary);
+      setColumnStats(stats);
+      setCorrelation(matrix);
+      setReady(true);
+    } catch (error) {
+      setOverviewError(getApiErrorMessage(error));
     } finally {
-      setLoading(false);
+      setOverviewLoading(false);
     }
-  };
+  }, []);
 
-  const fetchDistribution = async (col) => {
-    try {
-      const r = await fetch(`${API}/api/dataset/distribution/${col}`);
-      if (r.ok) setDistribution(await r.json());
-    } catch (e) { /* ignore */ }
-  };
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      fetchDatasetSummary(),
+      fetchColumnStatistics(),
+      fetchCorrelationMatrix(),
+    ])
+      .then(([datasetSummary, stats, matrix]) => {
+        if (!active) return;
+        setSummary(datasetSummary);
+        setColumnStats(stats);
+        setCorrelation(matrix);
+        setReady(true);
+      })
+      .catch((error) => {
+        if (active) setOverviewError(getApiErrorMessage(error));
+      })
+      .finally(() => {
+        if (active) setOverviewLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const fetchValueCounts = async (col) => {
-    try {
-      const r = await fetch(`${API}/api/dataset/value-counts/${col}`);
-      if (r.ok) setValueCounts(await r.json());
-    } catch (e) { /* ignore */ }
-  };
+  const numericColumns = useMemo(
+    () =>
+      Object.entries(columnStats?.stats ?? {})
+        .filter(([, metrics]) => Object.hasOwn(metrics, "mean"))
+        .map(([column]) => column),
+    [columnStats],
+  );
 
-  if (loading) {
+  useEffect(() => {
+    if (!ready || !selectedColumn) return;
+    let active = true;
+    fetchColumnDistribution(selectedColumn)
+      .then((result) => {
+        if (active) setDistributionState({ column: selectedColumn, result });
+      })
+      .catch((error) => {
+        if (active) setDistributionState({ column: selectedColumn, error: getApiErrorMessage(error) });
+      });
+    return () => {
+      active = false;
+    };
+  }, [ready, selectedColumn]);
+
+  useEffect(() => {
+    if (!ready || !xColumn || !yColumn) return;
+    let active = true;
+    fetchScatterPlot(xColumn, yColumn, 500)
+      .then((result) => {
+        if (active) setScatterState({ key: `${xColumn}-${yColumn}`, result });
+      })
+      .catch((error) => {
+        if (active) setScatterState({ key: `${xColumn}-${yColumn}`, error: getApiErrorMessage(error) });
+      });
+    return () => {
+      active = false;
+    };
+  }, [ready, xColumn, yColumn]);
+
+  if (overviewLoading) {
+    return <div className="page"><h1>Exploratory Analysis</h1><LoadingSpinner /></div>;
+  }
+
+  if (overviewError) {
     return (
-      <div className="eda">
-        <h1 className="page-title">Analysis</h1>
-        <p className="page-desc">Loading…</p>
-        <div className="loader-wrap"><div className="loader"></div></div>
+      <div className="page">
+        <div className="page-heading"><div><h1>Exploratory Analysis</h1><p>Explore the uploaded customer dataset.</p></div></div>
+        <section className="panel dashboard-empty">
+          <ErrorMessage message={overviewError} onRetry={loadOverview} />
+          <Link className="button button-primary" to="/upload">Upload a dataset</Link>
+        </section>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="eda">
-        <h1 className="page-title">Analysis</h1>
-        <p className="page-desc">Exploratory data analysis</p>
-        <div className="empty">
-          <p>{error}</p>
-          <Link to="/upload" className="btn-primary" style={{ marginTop: 12 }}>Upload dataset</Link>
-        </div>
-      </div>
-    );
-  }
+  const distributionLoading = !distributionState || distributionState.column !== selectedColumn;
+  const distribution = distributionState?.column === selectedColumn ? distributionState.result : null;
+  const distributionError = distributionState?.column === selectedColumn ? distributionState.error : null;
+  const scatterKey = `${xColumn}-${yColumn}`;
+  const scatterLoading = !scatterState || scatterState.key !== scatterKey;
+  const scatter = scatterState?.key === scatterKey ? scatterState.result : null;
+  const scatterError = scatterState?.key === scatterKey ? scatterState.error : null;
+  const distributionData = distribution ? asChartData(distribution) : [];
+  const correlationColumns = correlation?.columns ?? [];
 
-  const maxCorr = correlation ? Math.max(
-    ...correlation.columns.flatMap((c1) =>
-      correlation.columns.map((c2) => Math.abs(correlation.data[c1]?.[c2] || 0))
-    )
-  ) : 1;
+  const refreshOverview = () => {
+    setOverviewLoading(true);
+    setOverviewError(null);
+    setReady(false);
+    loadOverview();
+  };
 
   return (
-    <div className="eda">
-      <h1 className="page-title">Analysis</h1>
-      <p className="page-desc">Exploratory data analysis</p>
-
-      {/* KPI Row */}
-      {summary && (
-        <div className="kpi-row">
-          <div className="kpi">
-            <span className="kpi-label">Customers</span>
-            <span className="kpi-value">{summary.total_customers?.toLocaleString()}</span>
-          </div>
-          <div className="kpi">
-            <span className="kpi-label">Columns</span>
-            <span className="kpi-value">{summary.total_columns}</span>
-          </div>
-          <div className="kpi">
-            <span className="kpi-label">Conversion rate</span>
-            <span className="kpi-value">{summary.conversion_rate}%</span>
-          </div>
-          <div className="kpi">
-            <span className="kpi-label">Total spend</span>
-            <span className="kpi-value">${summary.total_spend?.toLocaleString()}</span>
-          </div>
-          <div className="kpi">
-            <span className="kpi-label">Visit rate</span>
-            <span className="kpi-value">{summary.visit_rate}%</span>
-          </div>
+    <div className="page">
+      <div className="page-heading">
+        <div>
+          <h1>Exploratory Analysis</h1>
+          <p>Descriptive statistics and visualizations from the uploaded dataset.</p>
         </div>
-      )}
+        <button className="button button-secondary" onClick={refreshOverview} type="button">Refresh</button>
+      </div>
 
-      {/* Two-column layout */}
-      <div className="grid-2">
-        {/* Treatment Groups */}
-        {summary?.treatment_groups && (
-          <div className="card">
-            <div className="card-head">Treatment groups</div>
-            <div className="hbar-chart">
-              {Object.entries(summary.treatment_groups).map(([label, count]) => {
-                const max = Math.max(...Object.values(summary.treatment_groups));
-                return (
-                  <div key={label} className="hbar-row">
-                    <span className="hbar-label">{label}</span>
-                    <div className="hbar-track">
-                      <div className="hbar-fill" style={{ width: `${(count / max) * 100}%` }}></div>
-                    </div>
-                    <span className="hbar-val">{count.toLocaleString()}</span>
-                  </div>
-                );
-              })}
+      <div className="stats-grid stats-grid-four">
+        <StatCard label="Rows" value={summary.rows?.toLocaleString() ?? "—"} />
+        <StatCard label="Columns" value={summary.columns ?? "—"} />
+        <StatCard label="Missing Values" value={summary.missing_values?.toLocaleString() ?? "—"} />
+        <StatCard label="Conversion Rate" value={summary.conversion_rate_percent == null ? "—" : `${summary.conversion_rate_percent}%`} />
+      </div>
+
+      <div className="analysis-grid">
+        <ChartCard title="Marketing treatment groups" subtitle="Counts by the observed email campaign segment">
+          {Object.keys(summary.treatment_group_counts ?? {}).length ? (
+            <div className="chart-frame">
+              <ResponsiveContainer width="100%" height={270}>
+                <BarChart
+                  data={Object.entries(summary.treatment_group_counts).map(([name, customers]) => ({ name, customers }))}
+                  margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} />
+                  <YAxis allowDecimals={false} tickLine={false} />
+                  <Tooltip />
+                  <Bar dataKey="customers" fill="#4f46e5" radius={[5, 5, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-        )}
+          ) : <EmptyState title="No treatment group data" />}
+        </ChartCard>
 
-        {/* Value Counts */}
-        <div className="card">
-          <div className="card-head">
-            <span>Value counts</span>
-            <select className="sel" value={vcColumn} onChange={(e) => setVcColumn(e.target.value)}>
-              {categoricalCols.map((c) => <option key={c} value={c}>{c}</option>)}
+        <ChartCard
+          title="Numerical distribution"
+          subtitle="Histogram bins returned by the distribution API"
+          action={(
+            <select
+              aria-label="Select numerical column"
+              className="select-control"
+              onChange={(event) => setSelectedColumn(event.target.value)}
+              value={selectedColumn}
+            >
+              {numericColumns.map((column) => <option key={column} value={column}>{column}</option>)}
             </select>
-          </div>
-          {valueCounts && (
-            <div className="hbar-chart">
-              {Object.entries(valueCounts.counts).map(([label, count]) => {
-                const max = Math.max(...Object.values(valueCounts.counts));
-                return (
-                  <div key={label} className="hbar-row">
-                    <span className="hbar-label">{label}</span>
-                    <div className="hbar-track">
-                      <div className="hbar-fill alt" style={{ width: `${(count / max) * 100}%` }}></div>
-                    </div>
-                    <span className="hbar-val">{count.toLocaleString()}</span>
-                  </div>
-                );
-              })}
+          )}
+        >
+          {distributionLoading ? <LoadingSpinner /> : distributionError ? (
+            <ErrorMessage message={distributionError} />
+          ) : !distributionData.length ? <EmptyState title="No distribution data" /> : (
+            <div className="chart-frame">
+              <ResponsiveContainer width="100%" height={270}>
+                <BarChart data={distributionData} margin={{ top: 8, right: 12, left: 0, bottom: 38 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="label" angle={-25} textAnchor="end" interval="preserveStartEnd" tickLine={false} />
+                  <YAxis allowDecimals={false} tickLine={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           )}
-        </div>
+        </ChartCard>
+
+        <ChartCard title="Correlation matrix" subtitle="Numerical variables only; correlation is not causation" className="wide-chart">
+          {correlationColumns.length < 2 ? (
+            <EmptyState title="Not enough numerical columns">
+              {correlation?.message ?? "At least two numerical columns are required."}
+            </EmptyState>
+          ) : (
+            <div className="correlation-scroll">
+              <table className="correlation-table">
+                <thead><tr><th></th>{correlationColumns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
+                <tbody>
+                  {correlationColumns.map((row) => (
+                    <tr key={row}>
+                      <th>{row}</th>
+                      {correlationColumns.map((column) => {
+                        const value = correlation.correlation?.[column]?.[row];
+                        const strength = value == null ? 0 : Math.abs(value);
+                        const shade = Math.min(strength, 1) * 0.42;
+                        return (
+                          <td
+                            key={column}
+                            style={{ backgroundColor: value == null ? "transparent" : value >= 0 ? `rgba(79, 70, 229, ${shade})` : `rgba(220, 38, 38, ${shade})` }}
+                            title={`${row} × ${column}`}
+                          >
+                            {value == null ? "—" : Number(value).toFixed(2)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </ChartCard>
+
+        <ChartCard
+          title="Customer history versus spend"
+          subtitle="A sample of up to 500 valid customer records"
+          className="wide-chart"
+          action={(
+            <div className="chart-selects">
+              <label>X <select className="select-control" value={xColumn} onChange={(event) => setXColumn(event.target.value)}>{numericColumns.map((column) => <option key={column}>{column}</option>)}</select></label>
+              <label>Y <select className="select-control" value={yColumn} onChange={(event) => setYColumn(event.target.value)}>{numericColumns.map((column) => <option key={column}>{column}</option>)}</select></label>
+            </div>
+          )}
+        >
+          {scatterLoading ? <LoadingSpinner /> : scatterError ? (
+            <ErrorMessage message={scatterError} />
+          ) : !scatter?.data?.length ? <EmptyState title="No valid points for these columns" /> : (
+            <div className="chart-frame">
+              <ResponsiveContainer width="100%" height={320}>
+                <ScatterChart margin={{ top: 12, right: 16, bottom: 16, left: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey={xColumn} type="number" name={xColumn} />
+                  <YAxis dataKey={yColumn} type="number" name={yColumn} />
+                  <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+                  <Scatter data={scatter.data} fill="#4f46e5" />
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </ChartCard>
       </div>
 
-      {/* Distribution */}
-      <div className="card">
-        <div className="card-head">
-          <span>Distribution</span>
-          <select className="sel" value={selectedCol} onChange={(e) => setSelectedCol(e.target.value)}>
-            {[...numericCols, ...categoricalCols].map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        {distribution && (
-          <div className="vbar-chart">
-            {distribution.labels.map((label, i) => {
-              const max = Math.max(...distribution.values);
-              const pct = max > 0 ? (distribution.values[i] / max) * 100 : 0;
-              return (
-                <div key={i} className="vbar-col" title={`${label}: ${distribution.values[i].toLocaleString()}`}>
-                  <span className="vbar-val">{distribution.values[i].toLocaleString()}</span>
-                  <div className="vbar-track">
-                    <div className="vbar-fill" style={{ height: `${pct}%` }}></div>
-                  </div>
-                  <span className="vbar-label">{label.length > 10 ? label.slice(0, 10) + "…" : label}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Correlation */}
-      {correlation && (
-        <div className="card">
-          <div className="card-head">Correlation matrix</div>
-          <div className="corr-scroll">
-            <table className="corr-tbl">
-              <thead>
-                <tr>
-                  <th></th>
-                  {correlation.columns.map((c) => <th key={c} className="corr-th">{c}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {correlation.columns.map((row) => (
-                  <tr key={row}>
-                    <td className="corr-rl">{row}</td>
-                    {correlation.columns.map((col) => {
-                      const v = correlation.data[col]?.[row] || 0;
-                      const abs = Math.abs(v);
-                      const op = Math.min(abs / maxCorr, 1);
-                      const bg = v >= 0
-                        ? `rgba(37,99,235,${op * 0.5})`
-                        : `rgba(220,38,38,${op * 0.5})`;
-                      return (
-                        <td key={col} className="corr-cell" style={{ background: bg }} title={`${row} × ${col}`}>
-                          {v}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Preview */}
-      {preview && (
-        <div className="card">
-          <div className="card-head">Data preview</div>
-          <div className="table-scroll">
-            <table className="tbl">
-              <thead>
-                <tr>{preview.columns.map((c) => <th key={c}>{c}</th>)}</tr>
-              </thead>
-              <tbody>
-                {preview.data.map((row, i) => (
-                  <tr key={i}>{preview.columns.map((c) => <td key={c}>{row[c]}</td>)}</tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <p className="causal-note">
+        Exploratory analysis describes the dataset. Causal effects will be estimated in a later stage using an appropriate treatment definition and a validated modeling pipeline.
+      </p>
+      <p className="causal-note secondary-note">
+        The Hillstrom dataset measures email marketing campaigns, not randomized discount amounts. Visit occurs after treatment and should not be treated as a pre-treatment feature when estimating the total effect on conversion.
+      </p>
     </div>
   );
-};
+}
 
 export default EDAPage;

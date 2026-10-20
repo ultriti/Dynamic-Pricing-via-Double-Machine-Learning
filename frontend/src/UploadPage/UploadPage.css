@@ -2,6 +2,12 @@
   max-width: 720px;
 }
 
+.upload-summary {
+  margin: 12px 0;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
 /* Dropzone */
 .dropzone {
   border: 2px dashed var(--border);

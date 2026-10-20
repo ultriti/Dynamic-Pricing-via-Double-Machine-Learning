@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchDatasetPreview, fetchDatasetSummary, getApiErrorMessage, uploadDataset } from "../services/api";
 import "./UploadPage.css";
 
-const API = "http://localhost:8000";
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 const UploadPage = () => {
   const [file, setFile] = useState(null);
@@ -11,26 +12,36 @@ const UploadPage = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [summary, setSummary] = useState(null);
   const navigate = useNavigate();
+
+  const selectFile = (selected) => {
+    if (!selected) return;
+    setResult(null);
+    setPreview(null);
+    setSummary(null);
+    if (!selected.name.toLowerCase().endsWith(".csv")) {
+      setFile(null);
+      setError("Only CSV files are accepted.");
+      return;
+    }
+    if (selected.size > MAX_UPLOAD_BYTES) {
+      setFile(null);
+      setError("File is too large. Maximum upload size is 20 MB.");
+      return;
+    }
+    setFile(selected);
+    setError(null);
+  };
 
   const handleDrop = (e) => {
     e.preventDefault();
     setDragging(false);
-    const dropped = e.dataTransfer.files[0];
-    if (dropped && dropped.name.endsWith(".csv")) {
-      setFile(dropped);
-      setError(null);
-    } else {
-      setError("Only CSV files are accepted.");
-    }
+    selectFile(e.dataTransfer.files[0]);
   };
 
   const handleFileSelect = (e) => {
-    const selected = e.target.files[0];
-    if (selected) {
-      setFile(selected);
-      setError(null);
-    }
+    selectFile(e.target.files[0]);
   };
 
   const handleUpload = async () => {
@@ -40,38 +51,52 @@ const UploadPage = () => {
     setResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch(`${API}/api/dataset/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Upload failed");
+      const data = await uploadDataset(file);
 
       setResult(data);
-
-      const prevRes = await fetch(`${API}/api/dataset/preview`);
-      if (prevRes.ok) setPreview(await prevRes.json());
+      if (!data.hillstrom_compatibility?.compatible_columns) {
+        return;
+      }
+      const [datasetPreview, datasetSummary] = await Promise.all([
+        fetchDatasetPreview(),
+        fetchDatasetSummary(),
+      ]);
+      setPreview(datasetPreview);
+      setSummary(datasetSummary);
     } catch (err) {
-      setError(err.message);
+      setError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="upload">
-      <h1 className="page-title">Upload dataset</h1>
-      <p className="page-desc">Upload a CSV file to begin analysis</p>
+    <div className="page upload">
+      <div className="page-heading">
+        <div>
+          <h1>Upload Dataset</h1>
+          <p>Upload a Hillstrom CSV file to begin analysis.</p>
+        </div>
+      </div>
 
       <div
         className={`dropzone ${dragging ? "drag-over" : ""} ${file ? "has-file" : ""}`}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
-        onClick={() => document.getElementById("csv-input").click()}
+        onClick={(event) => {
+          if (event.target.id !== "csv-input") {
+            document.getElementById("csv-input").click();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            document.getElementById("csv-input").click();
+          }
+        }}
       >
         <input
           id="csv-input"
@@ -106,7 +131,18 @@ const UploadPage = () => {
 
       {result && (
         <div className="result-section">
-          <div className="msg msg-success">Dataset uploaded — {result.rows?.toLocaleString()} rows, {result.columns?.length} columns, {result.missing_values} missing values.</div>
+          <div className="msg msg-success">
+            Dataset <strong>{result.filename}</strong> uploaded — {result.rows?.toLocaleString()} rows, {result.columns?.length} columns, {result.missing_values} missing values.
+          </div>
+
+          {!result.hillstrom_compatibility?.compatible_columns && (
+            <div className="msg msg-error" role="alert">
+              {result.hillstrom_compatibility?.message ?? "This dataset is not compatible with the Hillstrom analysis."}
+              {result.hillstrom_compatibility?.missing_columns?.length > 0 && (
+                <> Missing columns: {result.hillstrom_compatibility.missing_columns.join(", ")}.</>
+              )}
+            </div>
+          )}
 
           <div className="meta-row">
             {result.columns?.map((col) => (
@@ -132,9 +168,18 @@ const UploadPage = () => {
             </div>
           )}
 
-          <div className="actions">
-            <button className="btn-primary" onClick={() => navigate("/eda")}>Continue to analysis</button>
-          </div>
+          {summary && (
+            <p className="upload-summary">
+              Conversion rate: {summary.conversion_rate_percent ?? "—"}% · Visit rate: {summary.visit_rate_percent ?? "—"}%
+            </p>
+          )}
+
+          {result.hillstrom_compatibility?.compatible_columns && (
+            <div className="actions">
+              <button className="btn-primary" onClick={() => navigate("/")}>Go to dashboard</button>
+              <button className="btn-secondary" onClick={() => navigate("/eda")}>Explore dataset</button>
+            </div>
+          )}
         </div>
       )}
     </div>

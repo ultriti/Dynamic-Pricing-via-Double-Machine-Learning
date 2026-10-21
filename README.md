@@ -1,20 +1,23 @@
-# EconoCausal Frontend
+# EconoCausal: Dynamic Pricing via Double Machine Learning
 
-Frontend for the Dynamic Pricing via Double Machine Learning project.
+This is the frontend application for the **EconoCausal** project. It provides an interactive dashboard for marketing directors to visualize causal treatment effects, analyze customer segments, and optimize discount allocation using Double Machine Learning (DML).
 
-## Features Built
-- **Overview Page:** Displays the Uplift Curve (Plotly) proving the Causal Model outperforms random targeting.
-- **Allocation Matrix:** A table showing targeted discounts for "Persuadable" customers.
-- **EDA Integration:** Connected the Analysis page to display data distributions.
-- **React Router:** Fully working sidebar navigation between Overview, Upload, and Analysis pages.
+## 🚀 Features Built
+- **Overview Dashboard:** Displays the core business metrics, a custom `ExecutiveSummary` component translating ML results into plain language, and the interactive Plotly **Uplift Curve** (proving the Causal Model outperforms random targeting).
+- **Data Upload:** A fully functional drag-and-drop CSV uploader that connects to the FastAPI backend, with loading states and error handling.
+- **Exploratory Data Analysis (EDA):** A dynamic analysis page that fetches backend data to render KPI cards, treatment group distributions, and a correlation matrix.
+- **Allocation Matrix:** A prescriptive table showing the optimal discount assignment for specific user segments (e.g., "Persuadable" vs. "Sure Thing").
+- **User Experience:** Custom error boundaries and empty states (e.g., graceful fallback when the backend is disconnected).
 
-## Tech Stack
-- React (Vite)
-- React Router DOM
-- Plotly.js
-- CSS3 (Custom Design System)
+## 🛠️ Tech Stack
+- **Framework:** React 18 (powered by Vite)
+- **Routing:** React Router DOM
+- **Data Visualization:** Plotly.js (`react-plotly.js`)
+- **Styling:** Custom CSS with CSS Variables for a consistent design system
+- **API Integration:** Fetch API connecting to a local FastAPI server (`http://localhost:8000`)
 
-## How to Run Locally
-1. Navigate to the frontend folder: `cd frontend`
-2. Install dependencies: `npm install`
-3. Start the development server: `npm run dev`
+## 💻 How to Run Locally
+
+1. **Navigate to the frontend directory:**
+   ```bash
+   cd frontend

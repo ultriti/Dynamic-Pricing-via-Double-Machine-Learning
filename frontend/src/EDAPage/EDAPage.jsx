@@ -74,18 +74,23 @@ const EDAPage = () => {
   }
 
   if (error) {
-    return (
-      <div className="eda">
-        <h1 className="page-title">Analysis</h1>
-        <p className="page-desc">Exploratory data analysis</p>
-        <div className="empty">
-          <p>{error}</p>
-          <Link to="/upload" className="btn-primary" style={{ marginTop: 12 }}>Upload dataset</Link>
-        </div>
+  return (
+    <div className="eda">
+      <h1 className="page-title">Analysis</h1>
+      <p className="page-desc">Exploratory data analysis</p>
+      <div className="empty" style={{ textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+        <div style={{ fontSize: '40px', marginBottom: '20px' }}>🔌</div>
+        <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>No Data Connected</h3>
+        <p style={{ color: '#666', marginBottom: '20px' }}>
+          We couldn't reach the server. Please make sure the backend is running and you have uploaded a dataset.
+        </p>
+        <Link to="/upload" className="btn-primary" style={{ padding: '10px 20px', textDecoration: 'none' }}>
+          Go to Upload Page
+        </Link>
       </div>
-    );
-  }
-
+    </div>
+  );
+}
   const maxCorr = correlation ? Math.max(
     ...correlation.columns.flatMap((c1) =>
       correlation.columns.map((c2) => Math.abs(correlation.data[c1]?.[c2] || 0))

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import UpliftChart from "../components/UpliftChart";
 import AllocationMatrix from "../components/AllocationMatrix";
+import ExecutiveSummary from "../components/ExecutiveSummary";
 import './HomePage.css';
 function HomePage() {
   return (
@@ -48,7 +49,9 @@ function HomePage() {
 
         <div style={{ marginTop: '40px' }}>
           <UpliftChart />
+          <ExecutiveSummary />
           <AllocationMatrix />
+
         </div>
       </div>
     </div>

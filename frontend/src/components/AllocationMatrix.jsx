@@ -1,5 +1,5 @@
 function AllocationMatrix({ customers }) {
-  const rows = customers.slice(0, 10);
+  const rows = (customers || []).slice(0,10);
 
   return (
     <section className="panel">

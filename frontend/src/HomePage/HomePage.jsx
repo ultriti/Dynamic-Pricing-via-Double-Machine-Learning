@@ -4,6 +4,7 @@ import { ArrowRight, Database, Eye, Upload, Users } from "lucide-react";
 import UpliftChart from "../components/UpliftChart";
 import BudgetSlider from "../components/BudgetSlider";
 import AllocationMatrix from "../components/AllocationMatrix";
+import ExecutiveSummary from "../components/ExecutiveSummary";
 import {
   Bar,
   BarChart,
@@ -149,7 +150,8 @@ function HomePage() {
         </section>
       )}
     <div style={{marginTop: '40px'}}>
-      <UpliftChart />
+      <BudgetSlider />
+      <UpliftChart/>
       <ExecutiveSummary />
       <AllocationMatrix />
     </div>

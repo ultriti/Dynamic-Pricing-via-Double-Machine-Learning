@@ -6,7 +6,7 @@ const links = [
   { to: "/upload", label: "Upload Dataset", icon: Upload },
   { to: "/eda", label: "Exploratory Analysis", icon: BarChart3 },
   { to: "/preview", label: "Dataset Preview", icon: Table2 },
-  { to: "/causal", label: "Model Analysis", icon: Database },
+  { to: "/causal", label: "Causal Lab", icon: Database },
 ];
 
 export default function Sidebar() {

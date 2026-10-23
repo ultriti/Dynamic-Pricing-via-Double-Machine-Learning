@@ -5,7 +5,7 @@ pandas
 # Machine Learning
 scikit-learn
 econml
-dowhy
+dowhy>=0.13,<0.15
 
 # Optimization
 scipy
@@ -32,4 +32,3 @@ plotly
 
 # Testing
 pytest
-

@@ -4,6 +4,7 @@ import { fetchDatasetPreview, fetchDatasetSummary, getApiErrorMessage, uploadDat
 import "./UploadPage.css";
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+const CAMPAIGN_BUDGET_KEY = "econocausal:campaignBudget";
 
 const UploadPage = () => {
   const [file, setFile] = useState(null);
@@ -13,6 +14,10 @@ const UploadPage = () => {
   const [error, setError] = useState(null);
   const [preview, setPreview] = useState(null);
   const [summary, setSummary] = useState(null);
+  const [campaignBudget, setCampaignBudget] = useState(() => {
+    const savedBudget = Number(window.localStorage.getItem(CAMPAIGN_BUDGET_KEY));
+    return Number.isFinite(savedBudget) && savedBudget >= 1 ? savedBudget : 5000;
+  });
   const navigate = useNavigate();
 
   const selectFile = (selected) => {
@@ -43,6 +48,19 @@ const UploadPage = () => {
   const handleFileSelect = (e) => {
     selectFile(e.target.files[0]);
   };
+
+  const handleBudgetChange = (event) => {
+    const value = event.target.value;
+    setCampaignBudget(value);
+    const amount = Number(value);
+    if (value !== "" && Number.isFinite(amount) && amount >= 1) {
+      window.localStorage.setItem(CAMPAIGN_BUDGET_KEY, String(amount));
+    } else {
+      window.localStorage.removeItem(CAMPAIGN_BUDGET_KEY);
+    }
+  };
+  const budgetIsValid =
+    campaignBudget !== "" && Number.isFinite(Number(campaignBudget)) && Number(campaignBudget) >= 1;
 
   const handleUpload = async () => {
     if (!file) return;
@@ -75,9 +93,32 @@ const UploadPage = () => {
       <div className="page-heading">
         <div>
           <h1>Upload Dataset</h1>
-          <p>Upload a Hillstrom CSV file to begin analysis.</p>
+          <p>Upload historical campaign data and set the budget constraint for your analysis.</p>
         </div>
       </div>
+
+      <section className="campaign-budget">
+        <div>
+          <label htmlFor="campaign-budget">Campaign budget (USD)</label>
+          <p>Saved for the Week 3 allocation workflow; no discounts are allocated in this phase.</p>
+        </div>
+        <div className="budget-input-wrap">
+          <span aria-hidden="true">$</span>
+          <input
+            id="campaign-budget"
+            type="number"
+            min="1"
+            step="100"
+            required
+            value={campaignBudget}
+            onChange={handleBudgetChange}
+            aria-describedby="campaign-budget-help"
+          />
+        </div>
+        <span id="campaign-budget-help" className="budget-saved">
+          {budgetIsValid ? "Saved in this browser" : "Enter a budget of at least $1"}
+        </span>
+      </section>
 
       <div
         className={`dropzone ${dragging ? "drag-over" : ""} ${file ? "has-file" : ""}`}

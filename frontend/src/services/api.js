@@ -2,7 +2,25 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: "http://localhost:8000",
-  timeout: 20000,
+  timeout: 180000,
+});
+
+const ACTIVE_DATASET_KEY = "econocausal:activeDatasetId";
+
+api.interceptors.request.use((config) => {
+  const datasetScoped =
+    (config.method === "get" &&
+      (config.url?.startsWith("/api/dataset/") ||
+        config.url === "/api/causal/identify" ||
+        config.url === "/api/model/ite" ||
+        config.url === "/api/model/uplift-data")) ||
+    (config.method === "post" && config.url === "/api/causal/train");
+  const datasetId = window.localStorage.getItem(ACTIVE_DATASET_KEY);
+
+  if (datasetScoped && datasetId) {
+    config.params = { ...config.params, dataset_id: datasetId };
+  }
+  return config;
 });
 
 export const getApiErrorMessage = (error) => {
@@ -21,8 +39,18 @@ export const uploadDataset = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
   const { data } = await api.post("/api/dataset/upload", formData);
+  window.localStorage.setItem(ACTIVE_DATASET_KEY, data.dataset_id);
   return data;
 };
+
+export const fetchCausalDag = async () =>
+  (await api.get("/api/causal/dag")).data;
+
+export const identifyCausalEffect = async () =>
+  (await api.get("/api/causal/identify")).data;
+
+export const trainCausalModel = async () =>
+  (await api.post("/api/causal/train")).data;
 
 export const fetchDatasetPreview = async () =>
   (await api.get("/api/dataset/preview")).data;

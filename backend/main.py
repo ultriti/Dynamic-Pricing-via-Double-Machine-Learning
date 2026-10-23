@@ -12,6 +12,7 @@ from fastapi.encoders import jsonable_encoder
 
 # ----------------------------- import
 from utils.general_helper import json_records, safe_dataset_id, dataset_path
+from causal_engine import train_dml_analysis
 
 
 
@@ -45,6 +46,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1):517\d+$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -408,10 +410,13 @@ def dataset_preview(dataset_id: str | None = None):
         "data": json_records(df.head(10)),
     }
 
-
+# -----------------------------------
+# csv file summary
 @app.get("/api/dataset/summary")
 def dataset_summary(dataset_id: str | None = None):
     dataset_id, df = load_dataset(dataset_id)
+
+    # get all details of the csv ----
     result = {
         "dataset_id": dataset_id,
         "rows": int(len(df)),
@@ -578,10 +583,32 @@ def causal_dag():
         email_treatment -> conversion;
     }
     """
+    nodes = [
+        {"id": feature, "label": feature, "role": "confounder"}
+        for feature in DEFAULT_FEATURE_COLUMNS
+    ]
+    nodes.extend(
+        [
+            {
+                "id": "email_treatment",
+                "label": "Email treatment",
+                "role": "treatment",
+            },
+            {"id": "conversion", "label": "Conversion", "role": "outcome"},
+        ]
+    )
+    edges = [
+        {"source": feature, "target": target}
+        for feature in DEFAULT_FEATURE_COLUMNS
+        for target in ["email_treatment", "conversion"]
+    ]
+    edges.append({"source": "email_treatment", "target": "conversion"})
     return {
         "treatment": "email_treatment (Womens E-Mail=1, No E-Mail=0)",
         "outcome": "conversion",
         "confounders": DEFAULT_FEATURE_COLUMNS,
+        "nodes": nodes,
+        "edges": edges,
         "excluded_post_treatment_variable": "visit",
         "dot_graph": graph,
         "note": (
@@ -663,8 +690,30 @@ def identify_causal_effect(dataset_id: str | None = None):
 
 
 # ---------------------------
-# Week 2: saved model and ITE inference
+# Week 2: Double Machine Learning and held-out uplift evaluation
 # ---------------------------
+
+
+@app.post("/api/causal/train")
+def train_causal_model(dataset_id: str | None = None):
+    """Fit an EconML DML causal forest and evaluate uplift on held-out customers."""
+    resolved_id, df = load_dataset(dataset_id)
+    try:
+        result = train_dml_analysis(df, DEFAULT_FEATURE_COLUMNS)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"DML training or held-out evaluation failed: {exc}",
+        ) from exc
+
+    return {
+        "dataset_id": resolved_id,
+        **result,
+    }
 
 
 @app.get("/api/model/status")

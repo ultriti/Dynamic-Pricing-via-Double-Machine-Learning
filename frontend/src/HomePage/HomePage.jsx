@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Database, Eye, Upload, Users } from "lucide-react";
+import UpliftChart from "../components/UpliftChart";
+import BudgetSlider from "../components/BudgetSlider";
+import AllocationMatrix from "../components/AllocationMatrix";
+import ExecutiveSummary from "../components/ExecutiveSummary";
 import {
   Bar,
   BarChart,
@@ -145,6 +149,12 @@ function HomePage() {
           <Link className="button button-primary" to="/upload"><Upload size={17} /> Upload dataset</Link>
         </section>
       )}
+    <div style={{marginTop: '40px'}}>
+      <BudgetSlider />
+      <UpliftChart/>
+      <ExecutiveSummary />
+      <AllocationMatrix />
+    </div>
     </div>
   );
 }

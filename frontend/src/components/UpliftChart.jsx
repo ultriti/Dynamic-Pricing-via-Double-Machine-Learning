@@ -11,7 +11,7 @@ import ChartCard from "./ChartCard";
 import { EmptyState } from "./Feedback";
 
 function UpliftChart({ customers }) {
-  const estimates = customers
+  const estimates = (customers || []).map((customer) => Number(customer.ite))
     .map((customer) => Number(customer.ite))
     .filter(Number.isFinite);
   if (!estimates.length) {

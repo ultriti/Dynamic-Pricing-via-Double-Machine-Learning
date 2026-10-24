@@ -1,10 +1,11 @@
 
 from pathlib import Path
+import joblib
 
 import pandas as pd
 from sklearn.dummy import DummyRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error , r2_score
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import r2_score
@@ -18,13 +19,19 @@ DATA_PATH = (
     / "processed"
     / "shorya_retail_features.csv"
 )
-
 OUTPUT_PATH = (
     BACKEND_DIR
     / "data"
     / "processed"
     / "shorya_retail_demand_predictions.csv"
 )
+
+MODEL_PATH = (
+    BACKEND_DIR
+    / "models"
+    / "shorya_retail_demand_model.joblib"
+)
+
 
 
 def main():
@@ -149,7 +156,18 @@ def main():
     results.to_csv(OUTPUT_PATH, index=False)
 
     print(f"\nPredictions saved to: {OUTPUT_PATH}")
+        # Save the trained model for future use
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+    joblib.dump(
+        {
+            "model": model,
+            "feature_columns": feature_columns,
+        },
+        MODEL_PATH,
+    )
+
+    print(f"Trained model saved to: {MODEL_PATH}")
 
 if __name__ == "__main__":
     main()

@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline
+from sklearn.metrics import r2_score
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -105,7 +106,6 @@ def main():
             n_jobs=-1,
         ),
     )
-
     print("Training Random Forest model...")
     model.fit(X_train, y_train)
     predictions = model.predict(X_test)
@@ -114,24 +114,31 @@ def main():
     baseline_rmse = mean_squared_error(
         y_test, baseline_predictions
     ) ** 0.5
+    baseline_r2 = r2_score(y_test, baseline_predictions)
 
     model_mae = mean_absolute_error(y_test, predictions)
     model_rmse = mean_squared_error(y_test, predictions) ** 0.5
+    model_r2 = r2_score(y_test, predictions)
 
     print("\n--- Baseline Results ---")
     print(f"MAE:  {baseline_mae:.4f}")
     print(f"RMSE: {baseline_rmse:.4f}")
+    print(f"R2:   {baseline_r2:.4f}")
 
     print("\n--- Random Forest Results ---")
     print(f"MAE:  {model_mae:.4f}")
     print(f"RMSE: {model_rmse:.4f}")
+    print(f"R2:   {model_r2:.4f}")
 
     if model_mae < baseline_mae:
         print("\nThe model improved on the baseline MAE.")
     else:
         print("\nThe model did not improve on baseline MAE.")
 
-    # Save actual and predicted demand for analysis
+    if model_r2 > baseline_r2:
+        print("Random Forest improved on baseline R2.")
+    else:
+        print("Random Forest did not improve on baseline R2.")
     results = test[["StockCode", "Date", "daily_quantity"]].copy()
     results = results.rename(
         columns={"daily_quantity": "actual_quantity"}

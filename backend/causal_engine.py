@@ -190,25 +190,34 @@ def train_dml_analysis(
         treatment[train_indices],
         X=train_features,
     )
-    effects = np.asarray(
+    holdout_effects = np.asarray(
         estimator.effect(test_features, T0=0, T1=1), dtype=float
     ).reshape(-1)
-    if not np.isfinite(effects).all():
-        raise ValueError("The DML model produced non-finite treatment effects.")
+    if not np.isfinite(holdout_effects).all():
+        raise ValueError("The DML model produced non-finite holdout treatment effects.")
 
     evaluation = _uplift_evaluation(
-        treatment[test_indices], outcome[test_indices], effects
+        treatment[test_indices], outcome[test_indices], holdout_effects
     )
-    ranked_order = np.argsort(-effects, kind="stable")
+
+    population_features = preprocessor.fit_transform(features)
+    estimator.fit(outcome, treatment, X=population_features)
+    population_effects = np.asarray(
+        estimator.effect(population_features, T0=0, T1=1), dtype=float
+    ).reshape(-1)
+    if not np.isfinite(population_effects).all():
+        raise ValueError("The DML model produced non-finite population treatment effects.")
+
+    ranked_order = np.argsort(-population_effects, kind="stable")
     customer_limit = 20_000
     returned_order = ranked_order[:customer_limit]
     customers = [
         {
-            "row_id": str(selected.index[test_indices[index]]),
-            "treatment_group": str(selected.iloc[test_indices[index]]["segment"]),
-            "ite": float(effects[index]),
-            "effect_percentage_points": float(effects[index] * 100),
-            "conversion": int(outcome[test_indices[index]]),
+            "row_id": str(selected.index[index]),
+            "treatment_group": str(selected.iloc[index]["segment"]),
+            "ite": float(population_effects[index]),
+            "effect_percentage_points": float(population_effects[index] * 100),
+            "conversion": int(outcome[index]),
         }
         for index in returned_order
     ]
@@ -218,16 +227,17 @@ def train_dml_analysis(
         "outcome": "conversion",
         "estimator": "EconML CausalForestDML",
         "base_estimators": "RandomForestRegressor + RandomForestClassifier",
-        "customers_scored": int(len(effects)),
+        "customers_scored": int(len(population_effects)),
         "customer_rows_returned": int(len(customers)),
-        "mean_ite": float(effects.mean()),
-        "positive_effect_count": int((effects > 0).sum()),
-        "negative_effect_count": int((effects < 0).sum()),
+        "mean_ite": float(population_effects.mean()),
+        "positive_effect_count": int((population_effects > 0).sum()),
+        "negative_effect_count": int((population_effects < 0).sum()),
         "customers": customers,
         **evaluation,
         "warning": (
-            "ITE estimates and uplift metrics are evaluated on a held-out split; "
-            "they are not known individual counterfactuals. Causal interpretation "
+            "Customer ITEs come from a final model refit on the eligible comparison "
+            "cohort; held-out Qini and uplift metrics use a separate untouched split. "
+            "ITE estimates are not known individual counterfactuals. Causal interpretation "
             "depends on the DAG and treatment-assignment assumptions. This "
             "Hillstrom analysis compares email assignment, not discount amounts."
         ),

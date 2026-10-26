@@ -39,7 +39,8 @@ EconoCausal is a full-stack causal-analysis workspace for the first two project 
 
 - Fit an EconML `CausalForestDML` using random-forest outcome and treatment nuisance models with cross-fitting.
 - Compare `Womens E-Mail` (treatment) with `No E-Mail` (control), using conversion as the outcome and pre-treatment customer characteristics as confounders.
-- Evaluate ITE ranking on a held-out split; display Qini and observed uplift-by-decile charts using Plotly.
+- Refit the selected DML model on the eligible comparison cohort to estimate ITEs for every eligible customer.
+- Evaluate Qini and observed uplift-by-decile charts on a separate held-out split, so full-cohort scoring does not leak into the evaluation.
 - Filter and page through held-out customer-level treatment-effect estimates.
 
 The Hillstrom dataset is an email-marketing experiment: it does not contain $10/$20 discount treatments. The dashboard therefore estimates the email-assignment effect on conversion, not discount-level effects. ITEs are model estimates rather than known individual counterfactuals. The Qini comparison uses held-out observations and a random-rollout baseline; results depend on the assignment and measurement assumptions and are not proof that hidden confounding is absent.

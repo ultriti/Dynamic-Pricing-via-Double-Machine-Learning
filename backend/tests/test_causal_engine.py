@@ -57,7 +57,8 @@ def test_train_dml_analysis_returns_held_out_customer_effects():
 
     assert result["estimator"] == "EconML CausalForestDML"
     assert result["holdout_customers"] == 90
-    assert result["customers_scored"] == 90
-    assert result["customers"]
+    assert result["customers_scored"] == row_count
+    assert result["customer_rows_returned"] == row_count
+    assert len(result["customers"]) == row_count
     assert all(np.isfinite(customer["ite"]) for customer in result["customers"])
     assert result["qini_curve"][0]["strategy_gain"] == 0

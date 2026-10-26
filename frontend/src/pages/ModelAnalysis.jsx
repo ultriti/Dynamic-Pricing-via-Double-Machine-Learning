@@ -169,7 +169,7 @@ export default function ModelAnalysis() {
             <StatCard
               label="Customers scored"
               value={result.customers_scored.toLocaleString()}
-              note="Held-out observations"
+              note="Eligible comparison cohort"
               icon={Users}
             />
             <StatCard
@@ -203,7 +203,7 @@ export default function ModelAnalysis() {
               <div>
                 <h2>Customer-level treatment effects</h2>
                 <p>
-                  {result.customers_scored.toLocaleString()} held-out scores · {result.customer_rows_returned.toLocaleString()} rows available for filtering
+                  {result.customers_scored.toLocaleString()} eligible customers scored · {result.customer_rows_returned.toLocaleString()} rows available for filtering
                 </p>
               </div>
               <div className="causal-filters">

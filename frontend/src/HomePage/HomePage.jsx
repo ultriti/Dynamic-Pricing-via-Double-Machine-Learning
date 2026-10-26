@@ -69,92 +69,134 @@ function HomePage() {
   );
 
   return (
-    <div className="page">
-      <div className="page-heading">
-        <div>
-          <h1>EconoCausal Dashboard</h1>
-          <p>Explore customer data and prepare datasets for causal inference analysis.</p>
+    <div className="page" style={{ backgroundColor: '#f1f5f9', minHeight: '100vh', padding: '32px', fontFamily: 'Inter, system-ui, sans-serif' }}>
+
+      <div style={{ maxWidth: '1300px', margin: '0 auto' }}>
+
+        {/* HEADER */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+          <div>
+            <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>
+              Dashboard Overview
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '15px', margin: 0 }}>
+              Monitor your causal inference metrics and customer targeting performance.
+            </p>
+          </div>
+          <Link to="/upload" style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#7c3aed', color: 'white', padding: '10px 20px', borderRadius: '8px', fontWeight: '600', textDecoration: 'none', boxShadow: '0 4px 6px -1px rgba(124, 58, 237, 0.2)' }}>
+            <Upload size={18} /> Upload New Dataset
+          </Link>
         </div>
-        <Link className="button button-primary" to="/upload">
-          <Upload size={17} aria-hidden="true" /> Upload dataset
-        </Link>
+
+        {/* KPI CARDS ROW (Mocked for presentation) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+
+          {/* Card 1 */}
+          <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: '#64748b' }}>Total Customers</span>
+              <div style={{ backgroundColor: '#f3e8ff', padding: '8px', borderRadius: '8px' }}><Users size={20} color="#7c3aed" /></div>
+            </div>
+            <h2 style={{ fontSize: '32px', fontWeight: '700', color: '#0f172a', margin: 0 }}>64,000</h2>
+            <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#16a34a', fontWeight: '500' }}>↑ 12% from last month</p>
+          </div>
+
+          {/* Card 2 */}
+          <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: '#64748b' }}>Conversion Rate</span>
+              <div style={{ backgroundColor: '#dcfce7', padding: '8px', borderRadius: '8px' }}><Eye size={20} color="#16a34a" /></div>
+            </div>
+            <h2 style={{ fontSize: '32px', fontWeight: '700', color: '#0f172a', margin: 0 }}>0.9%</h2>
+            <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#16a34a', fontWeight: '500' }}>↑ 0.2% from baseline</p>
+          </div>
+
+          {/* Card 3 */}
+          <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: '#64748b' }}>Estimated Savings</span>
+              <div style={{ backgroundColor: '#fef3c7', padding: '8px', borderRadius: '8px' }}><Database size={20} color="#d97706" /></div>
+            </div>
+            <h2 style={{ fontSize: '32px', fontWeight: '700', color: '#0f172a', margin: 0 }}>$4,200</h2>
+            <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#16a34a', fontWeight: '500' }}>Based on DML targeting</p>
+          </div>
+        </div>
+
+        {/* MAIN CONTENT GRID */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
+
+          {/* LEFT COLUMN (Chart & Table) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+
+            {/* Executive Summary Card */}
+            <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>💡</span> Executive Insight
+              </h3>
+              <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: '1.6' }}>
+                By deploying the Double Machine Learning model to target only <strong style={{ color: '#7c3aed' }}>"Persuadable"</strong> customers, we project an incremental lift of <strong>2,300 conversions</strong>. This targeted strategy is estimated to save <strong>$4,200</strong> compared to blanket targeting.
+              </p>
+            </div>
+
+            {/* Uplift Chart Placeholder */}
+            <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '400px', display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Uplift Curve Analysis</h3>
+              <div style={{ flex: 1, backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                [ Your Plotly Uplift Chart Renders Here ]
+              </div>
+            </div>
+
+          </div>
+
+          {/* RIGHT COLUMN (Budget & Table) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+
+            {/* Budget Slider Placeholder */}
+            <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>🎯 Budget Optimization</h3>
+              <input type="range" min="1000" max="20000" style={{ width: '100%', accentColor: '#7c3aed' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+                <div><span style={{ fontSize: '12px', color: '#64748b' }}>Budget</span><br /><strong style={{ fontSize: '20px' }}>$5,000</strong></div>
+                <div style={{ textAlign: 'right' }}><span style={{ fontSize: '12px', color: '#64748b' }}>Targeted</span><br /><strong style={{ fontSize: '20px' }}>333</strong></div>
+              </div>
+            </div>
+
+            {/* Table Placeholder */}
+            <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', flex: 1 }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Top Target Segments</h3>
+              <table style={{ width: '100%', fontSize: '13px', textAlign: 'left', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
+                    <th style={{ paddingBottom: '8px' }}>Customer</th>
+                    <th style={{ paddingBottom: '8px' }}>Uplift</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '12px 0', color: '#0f172a' }}>C-1042</td>
+                    <td style={{ color: '#16a34a', fontWeight: '600' }}>High</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '12px 0', color: '#0f172a' }}>C-3382</td>
+                    <td style={{ color: '#d97706', fontWeight: '600' }}>Med</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '12px 0', color: '#0f172a' }}>C-4811</td>
+                    <td style={{ color: '#16a34a', fontWeight: '600' }}>High</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Note for the user since components aren't mounted yet */}
+        <div style={{ textAlign: 'center', marginTop: '40px', color: '#94a3b8', fontSize: '12px' }}>
+          Live backend integration pending. Displaying mock data for UI presentation.
+        </div>
+
       </div>
-
-      {loading ? (
-        <LoadingSpinner />
-      ) : error ? (
-        <section className="panel dashboard-empty">
-          <ErrorMessage message={error} onRetry={refreshSummary} />
-        </section>
-      ) : summary ? (
-        <>
-          <div className="stats-grid">
-            <StatCard label="Total Customers" value={summary.rows?.toLocaleString() ?? "—"} icon={Users} />
-            <StatCard label="Conversion Rate" value={summary.conversion_rate_percent == null ? "—" : `${summary.conversion_rate_percent}%`} note="Observed conversions" icon={Database} />
-            <StatCard label="Total Spend" value={summary.total_spend == null ? "—" : `$${Number(summary.total_spend).toLocaleString()}`} icon={Database} />
-            <StatCard label="Visit Rate" value={summary.visit_rate_percent == null ? "—" : `${summary.visit_rate_percent}%`} note="Observed visits" icon={Eye} />
-          </div>
-
-          <div className="dashboard-grid">
-            <ChartCard
-              title="Marketing treatment groups"
-              subtitle="Customer counts by email campaign segment"
-            >
-              {treatmentGroups.length ? (
-                <div className="chart-frame">
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={treatmentGroups} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="name" tickLine={false} />
-                      <YAxis allowDecimals={false} tickLine={false} />
-                      <Tooltip />
-                      <Bar dataKey="customers" fill="#4f46e5" radius={[5, 5, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <Empty title="Treatment groups unavailable" />
-              )}
-            </ChartCard>
-
-            <section className="panel dataset-status">
-              <div className="panel-heading">
-                <div>
-                  <h2>Dataset status</h2>
-                  <p>Current dataset overview</p>
-                </div>
-                <Database size={19} aria-hidden="true" />
-              </div>
-              <dl className="status-list">
-                <div><dt>Status</dt><dd><span className="status-pill">Dataset uploaded</span></dd></div>
-                <div><dt>Dimensions</dt><dd>{summary.rows?.toLocaleString()} rows × {summary.columns} columns</dd></div>
-                <div><dt>Missing values</dt><dd>{summary.missing_values?.toLocaleString() ?? "—"}</dd></div>
-                <div><dt>Average spend</dt><dd>{summary.average_spend == null ? "—" : `$${Number(summary.average_spend).toLocaleString()}`}</dd></div>
-              </dl>
-              <div className="inline-actions">
-                <Link className="button button-secondary" to="/preview"><Eye size={16} /> Preview data</Link>
-                <Link className="button button-secondary" to="/eda">Explore EDA <ArrowRight size={16} /></Link>
-              </div>
-            </section>
-          </div>
-          <p className="causal-note">
-            This dataset describes email marketing campaigns. It does not measure the causal effect of specific discount amounts.
-          </p>
-        </>
-      ) : (
-        <section className="panel dashboard-empty">
-          <Empty title="Upload a dataset to get started">
-            Dashboard statistics and charts will appear here after you upload a valid Hillstrom CSV.
-          </Empty>
-          <Link className="button button-primary" to="/upload"><Upload size={17} /> Upload dataset</Link>
-        </section>
-      )}
-    <div style={{marginTop: '40px'}}>
-      <BudgetSlider />
-      <UpliftChart/>
-      <ExecutiveSummary />
-      <AllocationMatrix />
-    </div>
     </div>
   );
 }

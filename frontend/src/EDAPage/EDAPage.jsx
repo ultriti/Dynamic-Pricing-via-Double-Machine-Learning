@@ -284,16 +284,26 @@ function EDAPage() {
             </div>
           )}
         </ChartCard>
+        <div style={{
+          marginTop: '24px',
+          padding: '20px',
+          backgroundColor: '#f8fafc',
+          borderRadius: '12px',
+          borderLeft: '4px solid #7c3aed',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: '1.6' }}>
+            <strong style={{ color: '#1e293b' }}>📊 Note on Exploratory Analysis:</strong> This section describes the dataset. Causal effects will be estimated in a later stage using an appropriate treatment definition and a validated modeling pipeline.
+          </p>
+          <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: '1.6' }}>
+            <strong style={{ color: '#1e293b' }}>⚠️ Dataset Limitation:</strong> The Hillstrom dataset measures email marketing campaigns, not randomized discount amounts. Visit occurs after treatment and should not be treated as a pre-treatment feature.
+          </p>
+        </div>
       </div>
-
-      <p className="causal-note">
-        Exploratory analysis describes the dataset. Causal effects will be estimated in a later stage using an appropriate treatment definition and a validated modeling pipeline.
-      </p>
-      <p className="causal-note secondary-note">
-        The Hillstrom dataset measures email marketing campaigns, not randomized discount amounts. Visit occurs after treatment and should not be treated as a pre-treatment feature when estimating the total effect on conversion.
-      </p>
     </div>
   );
 }
 
-export default EDAPage;
+        export default EDAPage;

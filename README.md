@@ -1,6 +1,5 @@
 # EconoCausal: Dynamic Pricing via Double Machine Learning
 
-<<<<<<<<< Temporary merge branch 1
 This is the frontend application for the **EconoCausal** project. It provides an interactive dashboard for marketing directors to visualize causal treatment effects, analyze customer segments, and optimize discount allocation using Double Machine Learning (DML).
 
 ## 🚀 Features Built

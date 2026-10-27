@@ -20,6 +20,8 @@ import StatCard from "../components/StatCard";
 import { fetchDatasetSummary, getApiErrorMessage } from "../services/api";
 
 function HomePage() {
+  const [mockBudget, setMockBudget] = useState(5000);
+  const [mockTargeted, setMockTargeted] = useState(333);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -154,10 +156,22 @@ function HomePage() {
             {/* Budget Slider Placeholder */}
             <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
               <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>🎯 Budget Optimization</h3>
-              <input type="range" min="1000" max="20000" style={{ width: '100%', accentColor: '#7c3aed' }} />
+              <input
+                type="range"
+                min="1000"
+                max="20000"
+                step="500"
+                value={mockBudget}
+                onChange={(e) => {
+                  const newBudget = parseInt(e.target.value);
+                  setMockBudget(newBudget);
+                  setMockTargeted(Math.floor(newBudget / 15));
+                }}
+                style={{ width: '100%', accentColor: '#7c3aed', cursor: 'pointer' }}
+              />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
-                <div><span style={{ fontSize: '12px', color: '#64748b' }}>Budget</span><br /><strong style={{ fontSize: '20px' }}>$5,000</strong></div>
-                <div style={{ textAlign: 'right' }}><span style={{ fontSize: '12px', color: '#64748b' }}>Targeted</span><br /><strong style={{ fontSize: '20px' }}>333</strong></div>
+                <div><span style={{ fontSize: '12px', color: '#64748b' }}>Budget</span><br /><strong style={{ fontSize: '20px' }}>${mockBudget.toLocaleString()}</strong></div>
+                <div style={{ textAlign: 'right' }}><span style={{ fontSize: '12px', color: '#64748b' }}>Targeted</span><br /><strong style={{ fontSize: '20px' }}>{mockTargeted.toLocaleString()}</strong></div>
               </div>
             </div>
 

@@ -152,6 +152,8 @@ function EDAPage() {
     setOverviewError(null);
     setReady(false);
     loadOverview();
+    const [budget, setBudget] = useState(5000);
+    const [targeted, setTargeted] = useState(333);
   };
 
   return (
@@ -306,4 +308,4 @@ function EDAPage() {
   );
 }
 
-        export default EDAPage;
+export default EDAPage;

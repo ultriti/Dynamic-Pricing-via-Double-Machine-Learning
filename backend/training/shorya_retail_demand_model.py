@@ -41,7 +41,12 @@ def main():
         )
 
     print("Loading feature-engineered dataset...")
-    df = pd.read_csv(DATA_PATH, parse_dates=["Date"])
+    df = pd.read_csv(
+        DATA_PATH,
+        parse_dates=["Date"],
+        dtype={"StockCode": str},
+        low_memory=False,
+    )
 
     required = [
         "StockCode",

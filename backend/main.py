@@ -12,13 +12,14 @@ from fastapi.encoders import jsonable_encoder
 
 # ----------------------------- import
 from utils.general_helper import json_records, safe_dataset_id, dataset_path
-from causal_engine import train_dml_analysis
+from causal_engine_exp import train_dml_analysis
 from dependencies.Dataset_filtering import (
     load_dataset,
     check_hillstrom_schema,
     prepare_hillstrom_comparison,
     encode_model_features,
     prepare_hillstrom_comparison,
+    load_model
 )
 
 # ---------------------------
@@ -57,22 +58,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Hillstrom columns expected for the complete dataset.
-# HILLSTROM_COLUMNS = [
-#     "recency",
-#     "history_segment",
-#     "history",
-#     "mens",
-#     "womens",
-#     "zip_code",
-#     "newbie",
-#     "channel",
-#     "segment",
-#     "visit",
-#     "conversion",
-#     "spend",
-# ]
-
 # Features used for customer-level inference.
 # IMPORTANT: These must match the features and preprocessing used to train the model.
 DEFAULT_FEATURE_COLUMNS = [
@@ -85,21 +70,6 @@ DEFAULT_FEATURE_COLUMNS = [
     "newbie",
     "channel",
 ]
-
-# These category codes were verified against the persisted X.pkl training matrix.
-# MODEL_CATEGORY_CODES = {
-#     "zip_code": {
-#         "rural": 0,
-#         "surburban": 1,
-#         "suburban": 1,
-#         "urban": 2,
-#     },
-#     "channel": {
-#         "multichannel": 0,
-#         "phone": 1,
-#         "web": 2,
-#     },
-# }
 
 
 # ---------------------------
@@ -125,7 +95,7 @@ def health():
 @app.post("/api/dataset/upload")
 async def upload_dataset(file: UploadFile = File(...)):
     """Upload any CSV; report whether it has the expected Hillstrom columns."""
-    
+
     if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a .csv file.")
 
@@ -140,6 +110,7 @@ async def upload_dataset(file: UploadFile = File(...)):
     try:
         df = pd.read_csv(BytesIO(content))
         df.columns = df.columns.astype(str).str.strip()
+
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Could not parse CSV: {exc}")
 
@@ -243,7 +214,12 @@ def dataset_columns(dataset_id: str | None = None):
         .astype(object)
         .where(pd.notna(df.describe(include="all")), None)
     )
+    # print({"dataset_id": dataset_id, "stats": jsonable_encoder(stats.to_dict())})
     return {"dataset_id": dataset_id, "stats": jsonable_encoder(stats.to_dict())}
+
+
+# -----------------------------
+# yet not implemented - frontend
 
 
 @app.get("/api/dataset/value-counts/{column}")
@@ -252,6 +228,16 @@ def dataset_value_counts(column: str, dataset_id: str | None = None):
     if column not in df.columns:
         raise HTTPException(status_code=400, detail=f"Column '{column}' not found.")
     counts = df[column].value_counts(dropna=False)
+    print(
+        {
+            "dataset_id": dataset_id,
+            "column": column,
+            "counts": {
+                str(key) if pd.notna(key) else "(Missing)": int(value)
+                for key, value in counts.items()
+            },
+        }
+    )
     return {
         "dataset_id": dataset_id,
         "column": column,
@@ -262,6 +248,8 @@ def dataset_value_counts(column: str, dataset_id: str | None = None):
     }
 
 
+# ----------------------------
+# correlation matrix graph
 @app.get("/api/dataset/correlation")
 def dataset_correlation(dataset_id: str | None = None):
     dataset_id, df = load_dataset(dataset_id)
@@ -299,6 +287,16 @@ def dataset_distribution(
         }
 
     counts = values.astype(str).value_counts()
+
+    # print(
+    #     {
+    #         "dataset_id": dataset_id,
+    #         "column": column,
+    #         "type": "categorical",
+    #         "labels": counts.index.tolist(),
+    #         "values": counts.astype(int).tolist(),
+    #     }
+    # )
     return {
         "dataset_id": dataset_id,
         "column": column,
@@ -307,7 +305,8 @@ def dataset_distribution(
         "values": counts.astype(int).tolist(),
     }
 
-
+# -----------------------------
+# scatter plot map
 @app.get("/api/dataset/scatter")
 def dataset_scatter(
     x: str = "history",
@@ -466,6 +465,7 @@ def identify_causal_effect(dataset_id: str | None = None):
             graph=graph,
         )
         estimand = model.identify_effect()
+        
         return {
             "dataset_id": resolved_id,
             "treatment": "Womens E-Mail vs No E-Mail",

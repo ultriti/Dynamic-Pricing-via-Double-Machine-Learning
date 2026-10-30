@@ -1,10 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchDatasetPreview, fetchDatasetSummary, getApiErrorMessage, uploadDataset } from "../services/api";
+import {
+  fetchDatasetList,
+  fetchDatasetPreview,
+  fetchDatasetSummary,
+  getActiveDatasetId,
+  getApiErrorMessage,
+  setActiveDatasetId,
+  uploadDataset,
+} from "../services/api";
 import "./UploadPage.css";
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 const CAMPAIGN_BUDGET_KEY = "econocausal:campaignBudget";
+const REQUIRED_DATASET_FEATURES = [
+  "recency",
+  "history_segment",
+  "history",
+  "mens",
+  "womens",
+  "zip_code",
+  "newbie",
+  "channel",
+];
 
 const UploadPage = () => {
   const [file, setFile] = useState(null);
@@ -14,11 +32,37 @@ const UploadPage = () => {
   const [error, setError] = useState(null);
   const [preview, setPreview] = useState(null);
   const [summary, setSummary] = useState(null);
+  const [datasets, setDatasets] = useState([]);
+  const [datasetListLoading, setDatasetListLoading] = useState(true);
+  const [datasetListError, setDatasetListError] = useState(null);
+  const [selectedDatasetId, setSelectedDatasetId] = useState(
+    () => getActiveDatasetId() ?? "",
+  );
   const [campaignBudget, setCampaignBudget] = useState(() => {
     const savedBudget = Number(window.localStorage.getItem(CAMPAIGN_BUDGET_KEY));
     return Number.isFinite(savedBudget) && savedBudget >= 1 ? savedBudget : 5000;
   });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let active = true;
+    fetchDatasetList()
+      .then(({ datasets: availableDatasets }) => {
+        if (active) {
+          setDatasets(availableDatasets);
+          setDatasetListError(null);
+        }
+      })
+      .catch((requestError) => {
+        if (active) setDatasetListError(getApiErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (active) setDatasetListLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const selectFile = (selected) => {
     if (!selected) return;
@@ -72,6 +116,15 @@ const UploadPage = () => {
       const data = await uploadDataset(file);
 
       setResult(data);
+      setSelectedDatasetId(data.dataset_id);
+      fetchDatasetList()
+        .then(({ datasets: availableDatasets }) => {
+          setDatasets(availableDatasets);
+          setDatasetListError(null);
+        })
+        .catch((requestError) =>
+          setDatasetListError(getApiErrorMessage(requestError)),
+        );
       if (!data.hillstrom_compatibility?.compatible_columns) {
         return;
       }
@@ -118,6 +171,68 @@ const UploadPage = () => {
         <span id="campaign-budget-help" className="budget-saved">
           {budgetIsValid ? "Saved in this browser" : "Enter a budget of at least $1"}
         </span>
+      </section>
+
+      <section className="dataset-picker">
+        <label htmlFor="saved-dataset">Or use a previously uploaded dataset</label>
+        <div className="dataset-picker-controls">
+          <select
+            id="saved-dataset"
+            value={selectedDatasetId}
+            disabled={datasetListLoading || datasets.length === 0}
+            onChange={(event) => {
+              const datasetId = event.target.value;
+              setSelectedDatasetId(datasetId);
+              setActiveDatasetId(datasetId);
+              setResult(null);
+              setPreview(null);
+              setSummary(null);
+              setError(null);
+            }}
+          >
+            <option value="">
+              {datasetListLoading ? "Loading datasets…" : "Select a dataset"}
+            </option>
+            {datasets.map((dataset) => {
+              const usable = REQUIRED_DATASET_FEATURES.every((feature) =>
+                dataset.columns.includes(feature),
+              );
+              return (
+                <option
+                  disabled={!usable}
+                  key={dataset.dataset_id}
+                  value={dataset.dataset_id}
+                >
+                  {dataset.filename}
+                  {usable ? "" : " (missing required features)"}
+                </option>
+              );
+            })}
+          </select>
+          {selectedDatasetId && (
+            <button
+              className="btn-secondary"
+              onClick={() => navigate("/")}
+              type="button"
+            >
+              Open dashboard
+            </button>
+          )}
+        </div>
+        {datasetListError && (
+          <p className="dataset-list-error" role="alert">
+            Could not load saved datasets: {datasetListError}
+          </p>
+        )}
+        {!datasetListLoading && !datasetListError && datasets.length === 0 && (
+          <p className="dataset-list-help">No uploaded datasets found yet.</p>
+        )}
+        {selectedDatasetId && (
+          <p className="dataset-list-help">
+            The selected dataset will be used by the dashboard, EDA, and causal
+            analysis pages.
+          </p>
+        )}
       </section>
 
       <div

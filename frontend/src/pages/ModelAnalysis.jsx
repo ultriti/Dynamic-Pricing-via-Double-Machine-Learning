@@ -5,8 +5,13 @@ import CausalDag from "../components/CausalDag";
 import CausalEvaluationCharts from "../components/CausalEvaluationCharts";
 import { ErrorMessage, LoadingSpinner } from "../components/Feedback";
 import StatCard from "../components/StatCard";
+import UpliftChart from "../components/UpliftChart";
 import {
   fetchCausalDag,
+  fetchModelInfo,
+  fetchModelPredictions,
+  fetchModelStatus,
+  fetchUpliftData,
   getApiErrorMessage,
   identifyCausalEffect,
   trainCausalModel,
@@ -15,6 +20,16 @@ import {
 const PAGE_SIZE = 50;
 
 export default function ModelAnalysis() {
+  const [modelStatus, setModelStatus] = useState(null);
+  const [modelInfo, setModelInfo] = useState(null);
+  const [modelLoading, setModelLoading] = useState(true);
+  const [modelError, setModelError] = useState(null);
+  const [iteResult, setIteResult] = useState(null);
+  const [iteLoading, setIteLoading] = useState(false);
+  const [iteError, setIteError] = useState(null);
+  const [upliftData, setUpliftData] = useState(null);
+  const [upliftLoading, setUpliftLoading] = useState(false);
+  const [upliftError, setUpliftError] = useState(null);
   const [dag, setDag] = useState(null);
   const [dagError, setDagError] = useState(null);
   const [identification, setIdentification] = useState(null);
@@ -28,6 +43,23 @@ export default function ModelAnalysis() {
 
   useEffect(() => {
     let active = true;
+    const loadSavedModel = async () => {
+      try {
+        const status = await fetchModelStatus();
+        if (!active) return;
+        setModelStatus(status);
+        if (status.exists) {
+          const info = await fetchModelInfo();
+          if (active) setModelInfo(info);
+        }
+      } catch (requestError) {
+        if (active) setModelError(getApiErrorMessage(requestError));
+      } finally {
+        if (active) setModelLoading(false);
+      }
+    };
+    loadSavedModel();
+
     fetchCausalDag()
       .then((data) => {
         if (active) setDag(data);
@@ -39,6 +71,30 @@ export default function ModelAnalysis() {
       active = false;
     };
   }, []);
+
+  const scoreActiveDataset = async () => {
+    setIteLoading(true);
+    setIteError(null);
+    try {
+      setIteResult(await fetchModelPredictions());
+    } catch (requestError) {
+      setIteError(getApiErrorMessage(requestError));
+    } finally {
+      setIteLoading(false);
+    }
+  };
+
+  const loadUpliftData = async () => {
+    setUpliftLoading(true);
+    setUpliftError(null);
+    try {
+      setUpliftData(await fetchUpliftData());
+    } catch (requestError) {
+      setUpliftError(getApiErrorMessage(requestError));
+    } finally {
+      setUpliftLoading(false);
+    }
+  };
 
   const runIdentification = async () => {
     setIdentifying(true);
@@ -98,6 +154,122 @@ export default function ModelAnalysis() {
           Upload campaign data
         </Link>
       </div>
+
+      <section className="panel causal-section">
+        <div className="panel-heading">
+          <div>
+            <h2>Saved model</h2>
+            <p>Model availability, training features, and scoring for the active dataset.</p>
+          </div>
+        </div>
+        {modelLoading ? (
+          <LoadingSpinner label="Checking saved model…" />
+        ) : modelError ? (
+          <ErrorMessage message={modelError} />
+        ) : modelStatus?.exists ? (
+          <>
+            <div className="model-info">
+              <div><strong>Model</strong><span>{modelInfo?.model_class ?? modelStatus.model_id}</span></div>
+              <div><strong>Outcome</strong><span>{modelInfo?.outcome ?? "—"}</span></div>
+              <div><strong>Treatment</strong><span>{modelInfo?.treatment_definition ?? "—"}</span></div>
+              <div><strong>Features</strong><span>{modelInfo?.feature_columns?.join(", ") ?? "—"}</span></div>
+            </div>
+            <p className="causal-note">
+              {modelInfo?.has_preprocessor
+                ? "A saved preprocessor is applied before scoring."
+                : "No saved preprocessor is configured."}
+            </p>
+            <div className="causal-actions">
+              <button
+                className="button button-secondary"
+                type="button"
+                onClick={scoreActiveDataset}
+                disabled={iteLoading || upliftLoading}
+              >
+                {iteLoading ? "Scoring customers…" : "Estimate individual effects"}
+              </button>
+              <button
+                className="button button-secondary"
+                type="button"
+                onClick={loadUpliftData}
+                disabled={upliftLoading || iteLoading}
+              >
+                {upliftLoading ? "Preparing uplift data…" : "Load uplift-ranking data"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="causal-note">
+            No saved model is available at {modelStatus?.model_file ?? "the configured model path"}.
+            Provide a compatible saved model artifact to enable these scoring endpoints.
+          </p>
+        )}
+        {iteError && <ErrorMessage message={iteError} />}
+        {iteLoading && <LoadingSpinner label="Estimating customer-level treatment effects…" />}
+        {iteResult && (
+          <div className="model-results">
+            <div>
+              <h3>Individual treatment effects</h3>
+              <p>
+                {iteResult.customers_scored.toLocaleString()} customers scored ·
+                {" "}mean effect {(iteResult.mean_ite * 100).toFixed(2)} percentage points
+              </p>
+              <UpliftChart customers={iteResult.customers} />
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr><th>Row ID</th><th>Treatment group</th><th>Estimated ITE</th><th>Effect (percentage points)</th></tr>
+                  </thead>
+                  <tbody>
+                    {iteResult.customers.slice(0, 10).map((customer) => (
+                      <tr key={customer.row_id}>
+                        <td>{customer.row_id}</td>
+                        <td>{customer.treatment_group}</td>
+                        <td>{Number(customer.ite).toFixed(5)}</td>
+                        <td>{Number(customer.effect_percentage_points).toFixed(3)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="causal-note">{iteResult.warning}</p>
+            </div>
+          </div>
+        )}
+        {upliftError && <ErrorMessage message={upliftError} />}
+        {upliftLoading && <LoadingSpinner label="Loading rows for uplift ranking…" />}
+        {upliftData && (
+          <div className="model-results">
+            <div>
+              <h3>Uplift-ranking data</h3>
+              <p>
+                {upliftData.rows.length.toLocaleString()} scored rows · sorted by
+                {" "}estimated effect, highest first
+              </p>
+              <UpliftChart customers={upliftData.rows} />
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr><th>Row ID</th><th>Treatment</th><th>Outcome</th><th>Estimated ITE</th><th>Population fraction</th></tr>
+                  </thead>
+                  <tbody>
+                    {upliftData.rows.slice(0, 10).map((row) => (
+                      <tr key={row.row_id}>
+                        <td>{row.row_id}</td>
+                        <td>{row.treatment}</td>
+                        <td>{row.outcome}</td>
+                        <td>{Number(row.ite).toFixed(5)}</td>
+                        <td>{(row.population_fraction * 100).toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="causal-note">{upliftData.note}</p>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="panel causal-section">
         <div className="panel-heading">

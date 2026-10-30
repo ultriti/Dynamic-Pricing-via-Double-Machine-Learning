@@ -12,7 +12,6 @@ import { EmptyState } from "./Feedback";
 
 function UpliftChart({ customers }) {
   const estimates = (customers || []).map((customer) => Number(customer.ite))
-    .map((customer) => Number(customer.ite))
     .filter(Number.isFinite);
   if (!estimates.length) {
     return <ChartCard title="Estimated ITE distribution"><EmptyState title="No valid model estimates" /></ChartCard>;

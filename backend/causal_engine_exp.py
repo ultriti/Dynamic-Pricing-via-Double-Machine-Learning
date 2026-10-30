@@ -101,6 +101,8 @@ def train_dml_analysis(
     try:
         from econml.dml import CausalForestDML
         from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+        
+        
     except ImportError as exc:
         raise RuntimeError(
             "EconML and scikit-learn are required for DML training."
@@ -112,6 +114,7 @@ def train_dml_analysis(
         raise ValueError(f"Dataset is missing required columns: {', '.join(missing)}")
 
     selected = frame.loc[frame["segment"].isin(TREATMENT_GROUPS)].copy()
+    
     selected["conversion"] = pd.to_numeric(selected["conversion"], errors="coerce")
     selected = selected.dropna(subset=["conversion"])
     selected["email_treatment"] = selected["segment"].eq("Womens E-Mail").astype(int)

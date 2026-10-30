@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from backend.causal_engine import _uplift_evaluation, train_dml_analysis
+from backend.causal_engine_exp import _uplift_evaluation, train_dml_analysis
 
 
 def test_uplift_evaluation_returns_random_baseline_and_deciles():

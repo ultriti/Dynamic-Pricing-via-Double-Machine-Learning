@@ -105,7 +105,11 @@ def main():
     print(f"Test period starts: {pd.Timestamp(split_date).date()}")
 
     # Baseline: predict the average training demand
-    baseline = DummyRegressor(strategy="mean")
+    baseline = make_pipeline(
+    SimpleImputer(strategy="median"),
+    DummyRegressor(strategy="mean"),
+)
+
     baseline.fit(X_train, y_train)
     baseline_predictions = baseline.predict(X_test)
 

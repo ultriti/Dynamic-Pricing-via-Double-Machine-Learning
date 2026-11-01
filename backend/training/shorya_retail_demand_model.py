@@ -79,6 +79,8 @@ def main():
     ]
 
     df = df.dropna(subset=["quantity_lag_1"]).copy()
+    if df.empty:
+        raise ValueError("No usable rows remain after removing missing lag values.")
 
     # Use earlier dates for training and later dates for testing
     unique_dates = sorted(df["Date"].unique())

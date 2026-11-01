@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Optional
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
@@ -101,7 +103,7 @@ MODEL_CATEGORY_CODES = {
 
 
 def load_dataset(
-    dataset_id: str | None = None,
+    dataset_id: Optional[str] = None,
 ) -> tuple[str, pd.DataFrame]:
     """
     Load a dataset by ID if provided.
@@ -265,50 +267,8 @@ def prepare_hillstrom_comparison(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def encode_model_features(features: pd.DataFrame) -> pd.DataFrame:
-    """Apply the category codes used to build the saved model's training matrix."""
-    encoded = features.copy()
-
-    for column, category_codes in MODEL_CATEGORY_CODES.items():
-        if column not in encoded.columns:
-            continue
-
-        numeric_values = pd.to_numeric(encoded[column], errors="coerce")
-        normalized_labels = encoded[column].astype("string").str.strip().str.casefold()
-        category_values = normalized_labels.map(category_codes)
-        encoded[column] = numeric_values.where(numeric_values.notna(), category_values)
-
-    for column in encoded.columns:
-        encoded[column] = pd.to_numeric(encoded[column], errors="coerce")
-
-    invalid_columns = {
-        column: {
-            "rows": encoded.loc[encoded[column].isna()].index.tolist()[:5],
-            "values": features.loc[encoded[column].isna(), column]
-            .astype(str)
-            .unique()
-            .tolist()[:5],
-        }
-        for column in encoded.columns
-        if encoded[column].isna().any()
-    }
-    if invalid_columns:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "message": (
-                    "Model features contain missing or unsupported values after "
-                    "applying the training category codes."
-                ),
-                "invalid_features": invalid_columns,
-                "supported_categories": {
-                    column: sorted(category_codes)
-                    for column, category_codes in MODEL_CATEGORY_CODES.items()
-                    if column in invalid_columns
-                },
-            },
-        )
-
-    return encoded
+    """Keep raw features for the fitted training preprocessor."""
+    return features.copy()
 
 
 # ---------------------------
@@ -401,7 +361,7 @@ def list_datasets():
 
 
 @app.get("/api/dataset/preview")
-def dataset_preview(dataset_id: str | None = None):
+def dataset_preview(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     return {
         "dataset_id": dataset_id,
@@ -413,7 +373,7 @@ def dataset_preview(dataset_id: str | None = None):
 # -----------------------------------
 # csv file summary
 @app.get("/api/dataset/summary")
-def dataset_summary(dataset_id: str | None = None):
+def dataset_summary(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
 
     # get all details of the csv ----
@@ -446,7 +406,7 @@ def dataset_summary(dataset_id: str | None = None):
 
 
 @app.get("/api/dataset/columns")
-def dataset_columns(dataset_id: str | None = None):
+def dataset_columns(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     stats = (
         df.describe(include="all")
@@ -457,7 +417,7 @@ def dataset_columns(dataset_id: str | None = None):
 
 
 @app.get("/api/dataset/value-counts/{column}")
-def dataset_value_counts(column: str, dataset_id: str | None = None):
+def dataset_value_counts(column: str, dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     if column not in df.columns:
         raise HTTPException(status_code=400, detail=f"Column '{column}' not found.")
@@ -473,7 +433,7 @@ def dataset_value_counts(column: str, dataset_id: str | None = None):
 
 
 @app.get("/api/dataset/correlation")
-def dataset_correlation(dataset_id: str | None = None):
+def dataset_correlation(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     numeric = df.select_dtypes(include="number")
     corr = numeric.corr().round(3).astype(object)
@@ -488,7 +448,7 @@ def dataset_correlation(dataset_id: str | None = None):
 @app.get("/api/dataset/distribution/{column}")
 def dataset_distribution(
     column: str,
-    dataset_id: str | None = None,
+    dataset_id: Optional[str] = None,
     bins: int = Query(default=20, ge=1, le=100),
 ):
     dataset_id, df = load_dataset(dataset_id)
@@ -522,7 +482,7 @@ def dataset_distribution(
 def dataset_scatter(
     x: str = "history",
     y: str = "spend",
-    dataset_id: str | None = None,
+    dataset_id: Optional[str] = None,
     sample: int = Query(default=500, ge=1, le=5000),
 ):
     dataset_id, df = load_dataset(dataset_id)
@@ -619,7 +579,7 @@ def causal_dag():
 
 
 @app.get("/api/causal/identify")
-def identify_causal_effect(dataset_id: str | None = None):
+def identify_causal_effect(dataset_id: Optional[str] = None):
     """Use DoWhy to identify an average effect for Womens E-Mail vs No E-Mail."""
     try:
         from dowhy import CausalModel
@@ -695,7 +655,7 @@ def identify_causal_effect(dataset_id: str | None = None):
 
 
 @app.post("/api/causal/train")
-def train_causal_model(dataset_id: str | None = None):
+def train_causal_model(dataset_id: Optional[str] = None):
     """Fit an EconML DML causal forest and evaluate uplift on held-out customers."""
     resolved_id, df = load_dataset(dataset_id)
     try:
@@ -709,6 +669,29 @@ def train_causal_model(dataset_id: str | None = None):
             status_code=422,
             detail=f"DML training or held-out evaluation failed: {exc}",
         ) from exc
+
+    model = result.pop("_model")
+    preprocessor = result.pop("_preprocessor")
+    feature_columns = result.pop("_feature_columns")
+
+    customers = result.pop("customers", [])
+    result["customers"] = customers[:10]
+
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    joblib.dump(
+        {
+            "model": model,
+            "preprocessor": preprocessor,
+            "feature_columns": feature_columns,
+            "metadata": {
+                "dataset_id": resolved_id,
+                "treatment": result.get("treatment"),
+                "outcome": result.get("outcome"),
+            },
+        },
+        MODEL_PATH,
+    )
 
     return {
         "dataset_id": resolved_id,
@@ -745,7 +728,7 @@ def model_info():
 
 
 @app.get("/api/model/ite")
-def model_ite(dataset_id: str | None = None):
+def model_ite(dataset_id: Optional[str] = None):
     """Estimate ITEs for uploaded data using the saved model."""
     resolved_id, df = load_dataset(dataset_id)
     model, features, preprocessor, metadata = load_model()
@@ -808,7 +791,7 @@ def model_ite(dataset_id: str | None = None):
 
 
 @app.get("/api/model/uplift-data")
-def uplift_data(dataset_id: str | None = None):
+def uplift_data(dataset_id: Optional[str] = None):
     """
     Return scored rows and observed outcomes to support frontend uplift/Qini charts.
     This endpoint supplies data; it does not claim that a Qini score has been validated.

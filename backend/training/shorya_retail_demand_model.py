@@ -162,6 +162,10 @@ def main():
     )
     results["predicted_quantity"] = predictions
     results["baseline_prediction"] = baseline_predictions
+    results["prediction_error"] = (
+        results["actual_quantity"] - results["predicted_quantity"]
+)
+    results["absolute_error"] = results["prediction_error"].abs()
 
     results.to_csv(OUTPUT_PATH, index=False)
 

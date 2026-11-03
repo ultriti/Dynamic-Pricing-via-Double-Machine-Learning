@@ -620,6 +620,106 @@
   font-size: 12px;
 }
 
+.archive-review-warning {
+  margin: 10px 0;
+  padding: 11px 13px;
+  color: #854d0e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.archive-review-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.archive-review-stats > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.archive-review-stats strong {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.archive-review-stats span {
+  overflow-wrap: anywhere;
+  color: #1e293b;
+}
+
+.archive-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 18px 0;
+}
+
+.archive-review-grid h3,
+.archive-score-heading h3 {
+  margin-bottom: 7px;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.archive-review-grid p,
+.archive-score-heading p {
+  margin: 6px 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.archive-score-section {
+  margin-top: 20px;
+}
+
+.archive-sensitivity {
+  margin-top: 16px;
+}
+
+.archive-sensitivity h3 {
+  margin-bottom: 7px;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.archive-sensitivity > p {
+  margin: 6px 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.archive-score-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.archive-review-caveats {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding-left: 20px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .estimand-result {
   min-width: min(100%, 440px);
   padding: 12px;
@@ -702,6 +802,15 @@
 @media (max-width: 680px) {
   .model-info {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .archive-review-stats,
+  .archive-review-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .archive-score-heading {
+    flex-direction: column;
   }
 
   .topbar {

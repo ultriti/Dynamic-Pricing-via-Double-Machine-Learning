@@ -157,6 +157,8 @@ const UploadPage = () => {
         </div>
         <div className="budget-input-wrap">
           <span aria-hidden="true">$</span>
+
+
           <input
             id="campaign-budget"
             type="number"
@@ -167,10 +169,14 @@ const UploadPage = () => {
             onChange={handleBudgetChange}
             aria-describedby="campaign-budget-help"
           />
+
+
         </div>
+
         <span id="campaign-budget-help" className="budget-saved">
           {budgetIsValid ? "Saved in this browser" : "Enter a budget of at least $1"}
         </span>
+        
       </section>
 
       <section className="dataset-picker">

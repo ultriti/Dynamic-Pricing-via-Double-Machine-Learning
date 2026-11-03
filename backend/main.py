@@ -2,6 +2,7 @@ from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 import re
+import json
 
 import joblib
 import numpy as np
@@ -19,7 +20,13 @@ from dependencies.Dataset_filtering import (
     prepare_hillstrom_comparison,
     encode_model_features,
     prepare_hillstrom_comparison,
-    load_model
+    load_model,
+    HILLSTROM_COLUMNS,
+)
+from dataset_inspection import inspect_uploaded_dataset
+from archive_campaign import (
+    REPORT_DIR as ARCHIVE_REPORT_DIR,
+    train_archive_campaign_model,
 )
 
 # ---------------------------
@@ -58,6 +65,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/api/archive-campaign/report")
+def archive_campaign_report():
+    report_path = ARCHIVE_REPORT_DIR / "archive_campaign_18_review.json"
+    if not report_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="No archive campaign analysis is available. Train it first.",
+        )
+    return json.loads(report_path.read_text(encoding="utf-8"))
+
+
+@app.get("/api/archive-campaign/scores")
+def archive_campaign_scores(
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
+    minimum_effect: float | None = None,
+    query: str | None = None,
+):
+    scores_path = ARCHIVE_REPORT_DIR / "archive_campaign_18_scores.csv"
+    if not scores_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="No archive campaign scores are available. Train the model first.",
+        )
+    scores = pd.read_csv(scores_path)
+    if minimum_effect is not None:
+        scores = scores.loc[scores["estimated_sales_effect"].ge(minimum_effect)]
+    if query:
+        scores = scores.loc[
+            scores["household_key"].astype(str).str.contains(query, case=False, regex=False)
+        ]
+    total = len(scores)
+    page = scores.iloc[offset : offset + limit]
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "scores": json_records(page),
+    }
+
 # Features used for customer-level inference.
 # IMPORTANT: These must match the features and preprocessing used to train the model.
 DEFAULT_FEATURE_COLUMNS = [
@@ -70,6 +117,7 @@ DEFAULT_FEATURE_COLUMNS = [
     "newbie",
     "channel",
 ]
+CAUSAL_REQUIRED_COLUMNS = DEFAULT_FEATURE_COLUMNS + ["segment", "conversion"]
 
 
 # ---------------------------
@@ -158,6 +206,25 @@ def list_datasets():
         except Exception:
             continue
     return {"total": len(datasets), "datasets": datasets}
+
+
+@app.get("/api/dataset/inspect")
+def inspect_dataset(dataset_id: str = Query(...)):
+    """Inspect an uploaded CSV without imposing Hillstrom model requirements."""
+    path = dataset_path(dataset_id)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+    try:
+        return inspect_uploaded_dataset(
+            path,
+            dataset_id,
+            causal_required_columns=CAUSAL_REQUIRED_COLUMNS,
+            hillstrom_required_columns=HILLSTROM_COLUMNS,
+        )
+    except (UnicodeDecodeError, pd.errors.ParserError, ValueError) as exc:
+        raise HTTPException(
+            status_code=400, detail=f"Could not inspect uploaded CSV: {exc}"
+        ) from exc
 
 
 @app.get("/api/dataset/preview")
@@ -408,7 +475,7 @@ def causal_dag():
 
 
 @app.get("/api/causal/identify")
-def identify_causal_effect(dataset_id: str | None = None):
+def identify_causal_effect(dataset_id: str = Query(...)):
     """Use DoWhy to identify an average effect for Womens E-Mail vs No E-Mail."""
     try:
         from dowhy import CausalModel
@@ -485,7 +552,7 @@ def identify_causal_effect(dataset_id: str | None = None):
 
 
 @app.post("/api/causal/train")
-def train_causal_model(dataset_id: str | None = None):
+def train_causal_model(dataset_id: str = Query(...)):
     """Fit an EconML DML causal forest and evaluate uplift on held-out customers."""
     resolved_id, df = load_dataset(dataset_id)
     try:
@@ -652,3 +719,18 @@ def uplift_data(dataset_id: str | None = None):
             "method. Do not evaluate causal uplift on the same data used to fit the model."
         ),
     }
+
+
+@app.post("/api/archive-campaign/train")
+def train_archive_campaign():
+    """Train and audit a household-level model on the local campaign archive."""
+    try:
+        result = train_archive_campaign_model()
+        return {
+            "report": result["report"],
+            "scores_total": len(result["scores"]),
+        }
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

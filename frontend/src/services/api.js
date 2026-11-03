@@ -16,6 +16,7 @@ export const setActiveDatasetId = (datasetId) => {
   } else {
     window.localStorage.removeItem(ACTIVE_DATASET_KEY);
   }
+  window.dispatchEvent(new Event("econocausal:activeDatasetChanged"));
 };
 
 api.interceptors.request.use((config) => {
@@ -67,11 +68,21 @@ export const fetchDatasetList = async () =>
 export const fetchCausalDag = async () =>
   (await api.get("/api/causal/dag")).data;
 
-export const identifyCausalEffect = async () =>
-  (await api.get("/api/causal/identify")).data;
+export const identifyCausalEffect = async (datasetId) =>
+  (await api.get("/api/causal/identify", { params: { dataset_id: datasetId } }))
+    .data;
 
-export const trainCausalModel = async () =>
-  (await api.post("/api/causal/train")).data;
+export const trainCausalModel = async (datasetId) =>
+  (await api.post("/api/causal/train", null, {
+    params: { dataset_id: datasetId },
+  })).data;
+
+export const fetchDatasetDetails = async (datasetId) =>
+  (
+    await api.get("/api/dataset/inspect", {
+      params: { dataset_id: datasetId },
+    })
+  ).data;
 
 export const fetchDatasetPreview = async () =>
   (await api.get("/api/dataset/preview")).data;
@@ -114,3 +125,20 @@ export const fetchModelPredictions = async () =>
 export const fetchUpliftData = async () =>
   (await api.get("/api/model/uplift-data")).data;
 
+export const trainArchiveCampaignModel = async () =>
+  (await api.post("/api/archive-campaign/train")).data;
+
+export const fetchArchiveCampaignReport = async () =>
+  (await api.get("/api/archive-campaign/report")).data;
+
+export const fetchArchiveCampaignScores = async ({
+  offset = 0,
+  limit = 50,
+  minimumEffect,
+  query,
+} = {}) =>
+  (
+    await api.get("/api/archive-campaign/scores", {
+      params: { offset, limit, minimum_effect: minimumEffect, query },
+    })
+  ).data;

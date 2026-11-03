@@ -1,0 +1,1110 @@
+{
+  "campaign_id": 18,
+  "campaign_type": "TypeA",
+  "start_day": 587,
+  "end_day": 642,
+  "lookback_days": 56,
+  "overlapping_campaign_ids_excluded": [
+    14,
+    15,
+    16,
+    17,
+    19,
+    20,
+    21,
+    22
+  ],
+  "excluded_households_with_concurrent_campaigns": 739,
+  "feature_columns": [
+    "pre_sales",
+    "pre_quantity",
+    "pre_lines",
+    "pre_recency_days",
+    "AGE_DESC",
+    "MARITAL_STATUS_CODE",
+    "INCOME_DESC",
+    "HOMEOWNER_DESC",
+    "HH_COMP_DESC",
+    "HOUSEHOLD_SIZE_DESC",
+    "KID_CATEGORY_DESC"
+  ],
+  "outcome": "household sales value during the campaign window",
+  "treatment": "household assigned campaign 18 vs not assigned",
+  "discount_treatment_available": false,
+  "cohort_rows": 1761,
+  "treated_households": 510,
+  "control_households": 1251,
+  "households_with_preperiod_transactions": 1474,
+  "households_with_campaign_window_purchase": 1504,
+  "mean_campaign_sales_treated": 95.39788235294117,
+  "mean_campaign_sales_control": 58.603900879296575,
+  "raw_sales_difference": 36.79398147364459,
+  "estimator": "EconML CausalForestDML",
+  "base_estimators": "RandomForestRegressor + RandomForestClassifier",
+  "outcome_mean_ite": 2.9192699778410622,
+  "positive_effect_households": 1208,
+  "negative_effect_households": 553,
+  "holdout_evaluation": {
+    "uplift_curve": [
+      {
+        "population_fraction": 0.0,
+        "strategy_gain": 0.0,
+        "random_gain": 0.0
+      },
+      {
+        "population_fraction": 0.005671077504725898,
+        "strategy_gain": -122.21869680851063,
+        "random_gain": 88.02282749269922
+      },
+      {
+        "population_fraction": 0.011342155009451797,
+        "strategy_gain": -98.88322017104711,
+        "random_gain": 176.04565498539844
+      },
+      {
+        "population_fraction": 0.017013232514177693,
+        "strategy_gain": -415.12954995828113,
+        "random_gain": 264.0684824780977
+      },
+      {
+        "population_fraction": 0.022684310018903593,
+        "strategy_gain": -692.3199222987065,
+        "random_gain": 352.0913099707969
+      },
+      {
+        "population_fraction": 0.02835538752362949,
+        "strategy_gain": -779.8018903838129,
+        "random_gain": 440.1141374634961
+      },
+      {
+        "population_fraction": 0.034026465028355386,
+        "strategy_gain": -1320.4089382561533,
+        "random_gain": 528.1369649561954
+      },
+      {
+        "population_fraction": 0.03969754253308129,
+        "strategy_gain": -1272.2527242386313,
+        "random_gain": 616.1597924488946
+      },
+      {
+        "population_fraction": 0.045368620037807186,
+        "strategy_gain": -1201.676355861493,
+        "random_gain": 704.1826199415938
+      },
+      {
+        "population_fraction": 0.05103969754253308,
+        "strategy_gain": -1435.8302131136136,
+        "random_gain": 792.205447434293
+      },
+      {
+        "population_fraction": 0.05671077504725898,
+        "strategy_gain": -898.8480400848275,
+        "random_gain": 880.2282749269922
+      },
+      {
+        "population_fraction": 0.062381852551984876,
+        "strategy_gain": -1258.4695560422745,
+        "random_gain": 968.2511024196914
+      },
+      {
+        "population_fraction": 0.06805293005671077,
+        "strategy_gain": -1451.442002850785,
+        "random_gain": 1056.2739299123907
+      },
+      {
+        "population_fraction": 0.07372400756143667,
+        "strategy_gain": -1824.879423063551,
+        "random_gain": 1144.29675740509
+      },
+      {
+        "population_fraction": 0.07939508506616258,
+        "strategy_gain": -1933.0149017869553,
+        "random_gain": 1232.3195848977891
+      },
+      {
+        "population_fraction": 0.08506616257088848,
+        "strategy_gain": -1977.8392102975936,
+        "random_gain": 1320.3424123904883
+      },
+      {
+        "population_fraction": 0.09073724007561437,
+        "strategy_gain": -2227.6932262550404,
+        "random_gain": 1408.3652398831875
+      },
+      {
+        "population_fraction": 0.09640831758034027,
+        "strategy_gain": -3210.7609390209977,
+        "random_gain": 1496.3880673758867
+      },
+      {
+        "population_fraction": 0.10207939508506617,
+        "strategy_gain": -3276.884743603114,
+        "random_gain": 1584.410894868586
+      },
+      {
+        "population_fraction": 0.10775047258979206,
+        "strategy_gain": -3737.705647858433,
+        "random_gain": 1672.4337223612852
+      },
+      {
+        "population_fraction": 0.11342155009451796,
+        "strategy_gain": -3848.2469510499227,
+        "random_gain": 1760.4565498539844
+      },
+      {
+        "population_fraction": 0.11909262759924386,
+        "strategy_gain": -3962.7331332568483,
+        "random_gain": 1848.4793773466836
+      },
+      {
+        "population_fraction": 0.12476370510396975,
+        "strategy_gain": -4097.2341970866355,
+        "random_gain": 1936.5022048393828
+      },
+      {
+        "population_fraction": 0.13043478260869565,
+        "strategy_gain": -4175.416457724933,
+        "random_gain": 2024.525032332082
+      },
+      {
+        "population_fraction": 0.13610586011342155,
+        "strategy_gain": -4207.534761507439,
+        "random_gain": 2112.5478598247814
+      },
+      {
+        "population_fraction": 0.14177693761814744,
+        "strategy_gain": -4156.571890209984,
+        "random_gain": 2200.5706873174804
+      },
+      {
+        "population_fraction": 0.14744801512287334,
+        "strategy_gain": -3672.017619072451,
+        "random_gain": 2288.59351481018
+      },
+      {
+        "population_fraction": 0.15311909262759923,
+        "strategy_gain": -3617.993374530663,
+        "random_gain": 2376.616342302879
+      },
+      {
+        "population_fraction": 0.15879017013232516,
+        "strategy_gain": -3812.7385341051313,
+        "random_gain": 2464.6391697955783
+      },
+      {
+        "population_fraction": 0.16446124763705106,
+        "strategy_gain": -4181.983347934919,
+        "random_gain": 2552.6619972882777
+      },
+      {
+        "population_fraction": 0.17013232514177695,
+        "strategy_gain": -4275.065021207065,
+        "random_gain": 2640.6848247809767
+      },
+      {
+        "population_fraction": 0.17580340264650285,
+        "strategy_gain": -3796.342090460298,
+        "random_gain": 2728.707652273676
+      },
+      {
+        "population_fraction": 0.18147448015122875,
+        "strategy_gain": -3704.9794281045756,
+        "random_gain": 2816.730479766375
+      },
+      {
+        "population_fraction": 0.18714555765595464,
+        "strategy_gain": -3618.921846405229,
+        "random_gain": 2904.7533072590745
+      },
+      {
+        "population_fraction": 0.19281663516068054,
+        "strategy_gain": -3646.127994194132,
+        "random_gain": 2992.7761347517735
+      },
+      {
+        "population_fraction": 0.19848771266540643,
+        "strategy_gain": -3439.469299993047,
+        "random_gain": 3080.798962244473
+      },
+      {
+        "population_fraction": 0.20415879017013233,
+        "strategy_gain": -3391.0234270268397,
+        "random_gain": 3168.821789737172
+      },
+      {
+        "population_fraction": 0.20982986767485823,
+        "strategy_gain": -3210.3743592685305,
+        "random_gain": 3256.8446172298713
+      },
+      {
+        "population_fraction": 0.21550094517958412,
+        "strategy_gain": -3813.2373911834243,
+        "random_gain": 3344.8674447225703
+      },
+      {
+        "population_fraction": 0.22117202268431002,
+        "strategy_gain": -4169.341619906828,
+        "random_gain": 3432.8902722152698
+      },
+      {
+        "population_fraction": 0.22684310018903592,
+        "strategy_gain": -4011.7844394034214,
+        "random_gain": 3520.9130997079687
+      },
+      {
+        "population_fraction": 0.23251417769376181,
+        "strategy_gain": -3881.263197573356,
+        "random_gain": 3608.935927200668
+      },
+      {
+        "population_fraction": 0.2381852551984877,
+        "strategy_gain": -3744.8743849951334,
+        "random_gain": 3696.958754693367
+      },
+      {
+        "population_fraction": 0.2438563327032136,
+        "strategy_gain": -3828.9164921429574,
+        "random_gain": 3784.9815821860666
+      },
+      {
+        "population_fraction": 0.2495274102079395,
+        "strategy_gain": -3698.578884890837,
+        "random_gain": 3873.0044096787656
+      },
+      {
+        "population_fraction": 0.2551984877126654,
+        "strategy_gain": -3811.314975316369,
+        "random_gain": 3961.027237171465
+      },
+      {
+        "population_fraction": 0.2608695652173913,
+        "strategy_gain": -3641.97594006397,
+        "random_gain": 4049.050064664164
+      },
+      {
+        "population_fraction": 0.2665406427221172,
+        "strategy_gain": -3517.754918300655,
+        "random_gain": 4137.072892156863
+      },
+      {
+        "population_fraction": 0.2722117202268431,
+        "strategy_gain": -3291.6457636281475,
+        "random_gain": 4225.095719649563
+      },
+      {
+        "population_fraction": 0.277882797731569,
+        "strategy_gain": -3492.567279585594,
+        "random_gain": 4313.118547142261
+      },
+      {
+        "population_fraction": 0.2835538752362949,
+        "strategy_gain": -3210.494268877765,
+        "random_gain": 4401.141374634961
+      },
+      {
+        "population_fraction": 0.2892249527410208,
+        "strategy_gain": -3202.0562738144913,
+        "random_gain": 4489.16420212766
+      },
+      {
+        "population_fraction": 0.2948960302457467,
+        "strategy_gain": -3269.152045091087,
+        "random_gain": 4577.18702962036
+      },
+      {
+        "population_fraction": 0.3005671077504726,
+        "strategy_gain": -3325.60602245863,
+        "random_gain": 4665.209857113058
+      },
+      {
+        "population_fraction": 0.30623818525519847,
+        "strategy_gain": -3223.144180920596,
+        "random_gain": 4753.232684605758
+      },
+      {
+        "population_fraction": 0.3119092627599244,
+        "strategy_gain": -3210.260794569602,
+        "random_gain": 4841.255512098458
+      },
+      {
+        "population_fraction": 0.3175803402646503,
+        "strategy_gain": -3260.8786498748445,
+        "random_gain": 4929.2783395911565
+      },
+      {
+        "population_fraction": 0.3232514177693762,
+        "strategy_gain": -3292.984447747185,
+        "random_gain": 5017.301167083856
+      },
+      {
+        "population_fraction": 0.3289224952741021,
+        "strategy_gain": -3500.448117959951,
+        "random_gain": 5105.323994576555
+      },
+      {
+        "population_fraction": 0.334593572778828,
+        "strategy_gain": -3363.150236058964,
+        "random_gain": 5193.346822069255
+      },
+      {
+        "population_fraction": 0.3402646502835539,
+        "strategy_gain": -2168.9932425949114,
+        "random_gain": 5281.369649561953
+      },
+      {
+        "population_fraction": 0.3459357277882798,
+        "strategy_gain": -1920.5820960228073,
+        "random_gain": 5369.392477054653
+      },
+      {
+        "population_fraction": 0.3516068052930057,
+        "strategy_gain": -1766.518846127104,
+        "random_gain": 5457.415304547352
+      },
+      {
+        "population_fraction": 0.3572778827977316,
+        "strategy_gain": -1656.6143328466146,
+        "random_gain": 5545.438132040052
+      },
+      {
+        "population_fraction": 0.3629489603024575,
+        "strategy_gain": -1257.4708303782513,
+        "random_gain": 5633.46095953275
+      },
+      {
+        "population_fraction": 0.3686200378071834,
+        "strategy_gain": -1314.0569473995279,
+        "random_gain": 5721.48378702545
+      },
+      {
+        "population_fraction": 0.3742911153119093,
+        "strategy_gain": -1368.0761344041168,
+        "random_gain": 5809.506614518149
+      },
+      {
+        "population_fraction": 0.3799621928166352,
+        "strategy_gain": -1300.264399770547,
+        "random_gain": 5897.5294420108485
+      },
+      {
+        "population_fraction": 0.3856332703213611,
+        "strategy_gain": -547.870406932277,
+        "random_gain": 5985.552269503547
+      },
+      {
+        "population_fraction": 0.391304347826087,
+        "strategy_gain": -570.0433856556812,
+        "random_gain": 6073.575096996246
+      },
+      {
+        "population_fraction": 0.39697542533081287,
+        "strategy_gain": -546.2795815950499,
+        "random_gain": 6161.597924488946
+      },
+      {
+        "population_fraction": 0.40264650283553877,
+        "strategy_gain": -594.5509235502718,
+        "random_gain": 6249.620751981645
+      },
+      {
+        "population_fraction": 0.40831758034026466,
+        "strategy_gain": -385.5440608051738,
+        "random_gain": 6337.643579474344
+      },
+      {
+        "population_fraction": 0.41398865784499056,
+        "strategy_gain": -512.8135820817695,
+        "random_gain": 6425.666406967043
+      },
+      {
+        "population_fraction": 0.41965973534971646,
+        "strategy_gain": -886.6871459115566,
+        "random_gain": 6513.689234459743
+      },
+      {
+        "population_fraction": 0.42533081285444235,
+        "strategy_gain": -938.8555501668757,
+        "random_gain": 6601.712061952442
+      },
+      {
+        "population_fraction": 0.43100189035916825,
+        "strategy_gain": -896.677345118899,
+        "random_gain": 6689.734889445141
+      },
+      {
+        "population_fraction": 0.43667296786389415,
+        "strategy_gain": -865.9124382909195,
+        "random_gain": 6777.75771693784
+      },
+      {
+        "population_fraction": 0.44234404536862004,
+        "strategy_gain": -1010.8004881101378,
+        "random_gain": 6865.7805444305395
+      },
+      {
+        "population_fraction": 0.44801512287334594,
+        "strategy_gain": 315.3362489570295,
+        "random_gain": 6953.803371923239
+      },
+      {
+        "population_fraction": 0.45368620037807184,
+        "strategy_gain": 855.4494972882769,
+        "random_gain": 7041.8261994159375
+      },
+      {
+        "population_fraction": 0.45935727788279773,
+        "strategy_gain": 1120.963027743012,
+        "random_gain": 7129.849026908637
+      },
+      {
+        "population_fraction": 0.46502835538752363,
+        "strategy_gain": 992.9619107217354,
+        "random_gain": 7217.871854401336
+      },
+      {
+        "population_fraction": 0.4706994328922495,
+        "strategy_gain": 728.096112849395,
+        "random_gain": 7305.894681894036
+      },
+      {
+        "population_fraction": 0.4763705103969754,
+        "strategy_gain": 608.3535862536504,
+        "random_gain": 7393.917509386734
+      },
+      {
+        "population_fraction": 0.4820415879017013,
+        "strategy_gain": 655.7691009595328,
+        "random_gain": 7481.940336879434
+      },
+      {
+        "population_fraction": 0.4877126654064272,
+        "strategy_gain": 604.0474151717425,
+        "random_gain": 7569.963164372133
+      },
+      {
+        "population_fraction": 0.4933837429111531,
+        "strategy_gain": 1188.5082761437911,
+        "random_gain": 7657.985991864832
+      },
+      {
+        "population_fraction": 0.499054820415879,
+        "strategy_gain": 1060.9010952927274,
+        "random_gain": 7746.008819357531
+      },
+      {
+        "population_fraction": 0.504725897920605,
+        "strategy_gain": 1833.9589897093595,
+        "random_gain": 7834.0316468502315
+      },
+      {
+        "population_fraction": 0.5103969754253308,
+        "strategy_gain": 1416.766516305104,
+        "random_gain": 7922.05447434293
+      },
+      {
+        "population_fraction": 0.5160680529300568,
+        "strategy_gain": 882.4202397093593,
+        "random_gain": 8010.077301835629
+      },
+      {
+        "population_fraction": 0.5217391304347826,
+        "strategy_gain": 1533.0047213530806,
+        "random_gain": 8098.100129328328
+      },
+      {
+        "population_fraction": 0.5274102079395085,
+        "strategy_gain": 1687.9833854818528,
+        "random_gain": 8186.122956821028
+      },
+      {
+        "population_fraction": 0.5330812854442344,
+        "strategy_gain": 1627.889728480045,
+        "random_gain": 8274.145784313727
+      },
+      {
+        "population_fraction": 0.5387523629489603,
+        "strategy_gain": 3093.6312280976226,
+        "random_gain": 8362.168611806426
+      },
+      {
+        "population_fraction": 0.5444234404536862,
+        "strategy_gain": 2817.0259668335425,
+        "random_gain": 8450.191439299126
+      },
+      {
+        "population_fraction": 0.5500945179584121,
+        "strategy_gain": 2675.8393905576418,
+        "random_gain": 8538.214266791825
+      },
+      {
+        "population_fraction": 0.555765595463138,
+        "strategy_gain": 2335.1268107704077,
+        "random_gain": 8626.237094284523
+      },
+      {
+        "population_fraction": 0.5614366729678639,
+        "strategy_gain": 2297.014957585872,
+        "random_gain": 8714.259921777224
+      },
+      {
+        "population_fraction": 0.5671077504725898,
+        "strategy_gain": 2143.6330958837443,
+        "random_gain": 8802.282749269922
+      },
+      {
+        "population_fraction": 0.5727788279773157,
+        "strategy_gain": 2166.4207952649153,
+        "random_gain": 8890.305576762621
+      },
+      {
+        "population_fraction": 0.5784499054820416,
+        "strategy_gain": 1597.9990399457665,
+        "random_gain": 8978.32840425532
+      },
+      {
+        "population_fraction": 0.5841209829867675,
+        "strategy_gain": 821.9166463287453,
+        "random_gain": 9066.35123174802
+      },
+      {
+        "population_fraction": 0.5897920604914934,
+        "strategy_gain": 1839.671156132667,
+        "random_gain": 9154.37405924072
+      },
+      {
+        "population_fraction": 0.5954631379962193,
+        "strategy_gain": 1479.303975281603,
+        "random_gain": 9242.396886733419
+      },
+      {
+        "population_fraction": 0.6011342155009451,
+        "strategy_gain": 1539.2654006744553,
+        "random_gain": 9330.419714226116
+      },
+      {
+        "population_fraction": 0.6068052930056711,
+        "strategy_gain": 2129.6682241691014,
+        "random_gain": 9418.442541718818
+      },
+      {
+        "population_fraction": 0.6124763705103969,
+        "strategy_gain": 2872.81685509665,
+        "random_gain": 9506.465369211515
+      },
+      {
+        "population_fraction": 0.6181474480151229,
+        "strategy_gain": 3405.97994385343,
+        "random_gain": 9594.488196704215
+      },
+      {
+        "population_fraction": 0.6238185255198488,
+        "strategy_gain": 3446.9297190933135,
+        "random_gain": 9682.511024196916
+      },
+      {
+        "population_fraction": 0.6294896030245747,
+        "strategy_gain": 3625.1721347865414,
+        "random_gain": 9770.533851689614
+      },
+      {
+        "population_fraction": 0.6351606805293006,
+        "strategy_gain": 3969.624625399808,
+        "random_gain": 9858.556679182313
+      },
+      {
+        "population_fraction": 0.6408317580340265,
+        "strategy_gain": 5232.987210749551,
+        "random_gain": 9946.579506675012
+      },
+      {
+        "population_fraction": 0.6465028355387524,
+        "strategy_gain": 5218.6788862814665,
+        "random_gain": 10034.602334167712
+      },
+      {
+        "population_fraction": 0.6521739130434783,
+        "strategy_gain": 5089.017609685722,
+        "random_gain": 10122.625161660411
+      },
+      {
+        "population_fraction": 0.6578449905482042,
+        "strategy_gain": 4923.676971387849,
+        "random_gain": 10210.64798915311
+      },
+      {
+        "population_fraction": 0.6635160680529301,
+        "strategy_gain": 4923.676971387849,
+        "random_gain": 10298.670816645808
+      },
+      {
+        "population_fraction": 0.669187145557656,
+        "strategy_gain": 4892.6404288346575,
+        "random_gain": 10386.69364413851
+      },
+      {
+        "population_fraction": 0.6748582230623819,
+        "strategy_gain": 4976.6580758934815,
+        "random_gain": 10474.716471631207
+      },
+      {
+        "population_fraction": 0.6805293005671078,
+        "strategy_gain": 4864.906825893481,
+        "random_gain": 10562.739299123907
+      },
+      {
+        "population_fraction": 0.6862003780718336,
+        "strategy_gain": 4832.61812908497,
+        "random_gain": 10650.762126616606
+      },
+      {
+        "population_fraction": 0.6918714555765596,
+        "strategy_gain": 4818.5489801488,
+        "random_gain": 10738.784954109306
+      },
+      {
+        "population_fraction": 0.6975425330812854,
+        "strategy_gain": 4735.667623765822,
+        "random_gain": 10826.807781602005
+      },
+      {
+        "population_fraction": 0.7032136105860114,
+        "strategy_gain": 4725.720735467949,
+        "random_gain": 10914.830609094704
+      },
+      {
+        "population_fraction": 0.7088846880907372,
+        "strategy_gain": 4633.581879084971,
+        "random_gain": 11002.853436587402
+      },
+      {
+        "population_fraction": 0.7145557655954632,
+        "strategy_gain": 4633.581879084971,
+        "random_gain": 11090.876264080103
+      },
+      {
+        "population_fraction": 0.720226843100189,
+        "strategy_gain": 4287.38233121263,
+        "random_gain": 11178.8990915728
+      },
+      {
+        "population_fraction": 0.725897920604915,
+        "strategy_gain": 4287.38233121263,
+        "random_gain": 11266.9219190655
+      },
+      {
+        "population_fraction": 0.7315689981096408,
+        "strategy_gain": 4257.288421638162,
+        "random_gain": 11354.9447465582
+      },
+      {
+        "population_fraction": 0.7372400756143668,
+        "strategy_gain": 4247.946506744544,
+        "random_gain": 11442.9675740509
+      },
+      {
+        "population_fraction": 0.7429111531190926,
+        "strategy_gain": 4104.075389723268,
+        "random_gain": 11530.990401543599
+      },
+      {
+        "population_fraction": 0.7485822306238186,
+        "strategy_gain": 4049.4026769573106,
+        "random_gain": 11619.013229036298
+      },
+      {
+        "population_fraction": 0.7542533081285444,
+        "strategy_gain": 4036.459059936034,
+        "random_gain": 11707.036056528996
+      },
+      {
+        "population_fraction": 0.7599243856332704,
+        "strategy_gain": 3940.7044322764596,
+        "random_gain": 11795.058884021697
+      },
+      {
+        "population_fraction": 0.7655954631379962,
+        "strategy_gain": 3710.153288659438,
+        "random_gain": 11883.081711514395
+      },
+      {
+        "population_fraction": 0.7712665406427222,
+        "strategy_gain": 3552.7195120636934,
+        "random_gain": 11971.104539007094
+      },
+      {
+        "population_fraction": 0.776937618147448,
+        "strategy_gain": 3374.3508418509273,
+        "random_gain": 12059.127366499793
+      },
+      {
+        "population_fraction": 0.782608695652174,
+        "strategy_gain": 3317.4411344041187,
+        "random_gain": 12147.150193992493
+      },
+      {
+        "population_fraction": 0.7882797731568998,
+        "strategy_gain": 3150.524751425395,
+        "random_gain": 12235.173021485192
+      },
+      {
+        "population_fraction": 0.7939508506616257,
+        "strategy_gain": 3150.524751425395,
+        "random_gain": 12323.195848977892
+      },
+      {
+        "population_fraction": 0.7996219281663516,
+        "strategy_gain": 3045.048341850927,
+        "random_gain": 12411.21867647059
+      },
+      {
+        "population_fraction": 0.8052930056710775,
+        "strategy_gain": 3045.048341850927,
+        "random_gain": 12499.24150396329
+      },
+      {
+        "population_fraction": 0.8109640831758034,
+        "strategy_gain": 3026.111267382842,
+        "random_gain": 12587.264331455988
+      },
+      {
+        "population_fraction": 0.8166351606805293,
+        "strategy_gain": 3350.3549428104598,
+        "random_gain": 12675.287158948688
+      },
+      {
+        "population_fraction": 0.8223062381852552,
+        "strategy_gain": 3320.053306389934,
+        "random_gain": 12763.309986441387
+      },
+      {
+        "population_fraction": 0.8279773156899811,
+        "strategy_gain": 3054.3153132387724,
+        "random_gain": 12851.332813934087
+      },
+      {
+        "population_fraction": 0.8336483931947071,
+        "strategy_gain": 2548.61382387707,
+        "random_gain": 12939.355641426786
+      },
+      {
+        "population_fraction": 0.8393194706994329,
+        "strategy_gain": 2891.312360589627,
+        "random_gain": 13027.378468919485
+      },
+      {
+        "population_fraction": 0.8449905482041589,
+        "strategy_gain": 3359.0582286886397,
+        "random_gain": 13115.401296412185
+      },
+      {
+        "population_fraction": 0.8506616257088847,
+        "strategy_gain": 3178.1995030246153,
+        "random_gain": 13203.424123904884
+      },
+      {
+        "population_fraction": 0.8563327032136107,
+        "strategy_gain": 3119.857317132528,
+        "random_gain": 13291.446951397584
+      },
+      {
+        "population_fraction": 0.8620037807183365,
+        "strategy_gain": 2837.0533543665706,
+        "random_gain": 13379.469778890281
+      },
+      {
+        "population_fraction": 0.8676748582230625,
+        "strategy_gain": 3014.9136041579764,
+        "random_gain": 13467.492606382983
+      },
+      {
+        "population_fraction": 0.8733459357277883,
+        "strategy_gain": 3480.882161729941,
+        "random_gain": 13555.51543387568
+      },
+      {
+        "population_fraction": 0.8790170132325142,
+        "strategy_gain": 3584.8472872340435,
+        "random_gain": 13643.53826136838
+      },
+      {
+        "population_fraction": 0.8846880907372401,
+        "strategy_gain": 3332.3060638297884,
+        "random_gain": 13731.561088861079
+      },
+      {
+        "population_fraction": 0.890359168241966,
+        "strategy_gain": 5880.73763245724,
+        "random_gain": 13819.583916353778
+      },
+      {
+        "population_fraction": 0.8960302457466919,
+        "strategy_gain": 5524.2271455639,
+        "random_gain": 13907.606743846478
+      },
+      {
+        "population_fraction": 0.9017013232514178,
+        "strategy_gain": 6456.30283722709,
+        "random_gain": 13995.629571339177
+      },
+      {
+        "population_fraction": 0.9073724007561437,
+        "strategy_gain": 8440.942412042832,
+        "random_gain": 14083.652398831875
+      },
+      {
+        "population_fraction": 0.9130434782608696,
+        "strategy_gain": 10667.410059101656,
+        "random_gain": 14171.675226324576
+      },
+      {
+        "population_fraction": 0.9187145557655955,
+        "strategy_gain": 10039.989281741067,
+        "random_gain": 14259.698053817274
+      },
+      {
+        "population_fraction": 0.9243856332703214,
+        "strategy_gain": 11816.676720205814,
+        "random_gain": 14347.720881309973
+      },
+      {
+        "population_fraction": 0.9300567107750473,
+        "strategy_gain": 11280.752859824783,
+        "random_gain": 14435.743708802673
+      },
+      {
+        "population_fraction": 0.9357277882797732,
+        "strategy_gain": 11853.836193158117,
+        "random_gain": 14523.766536295372
+      },
+      {
+        "population_fraction": 0.941398865784499,
+        "strategy_gain": 11514.094384647478,
+        "random_gain": 14611.789363788072
+      },
+      {
+        "population_fraction": 0.947069943289225,
+        "strategy_gain": 12732.868894451398,
+        "random_gain": 14699.812191280771
+      },
+      {
+        "population_fraction": 0.9527410207939508,
+        "strategy_gain": 14483.938159852594,
+        "random_gain": 14787.835018773469
+      },
+      {
+        "population_fraction": 0.9584120982986768,
+        "strategy_gain": 15379.667446634685,
+        "random_gain": 14875.85784626617
+      },
+      {
+        "population_fraction": 0.9640831758034026,
+        "strategy_gain": 15116.731513002367,
+        "random_gain": 14963.880673758867
+      },
+      {
+        "population_fraction": 0.9697542533081286,
+        "strategy_gain": 15094.326991030459,
+        "random_gain": 15051.903501251567
+      },
+      {
+        "population_fraction": 0.9754253308128544,
+        "strategy_gain": 15348.628421290507,
+        "random_gain": 15139.926328744266
+      },
+      {
+        "population_fraction": 0.9810964083175804,
+        "strategy_gain": 15126.752885029902,
+        "random_gain": 15227.949156236966
+      },
+      {
+        "population_fraction": 0.9867674858223062,
+        "strategy_gain": 15285.742084202479,
+        "random_gain": 15315.971983729663
+      },
+      {
+        "population_fraction": 0.9924385633270322,
+        "strategy_gain": 15079.469234112086,
+        "random_gain": 15403.994811222365
+      },
+      {
+        "population_fraction": 0.998109640831758,
+        "strategy_gain": 15533.03597482965,
+        "random_gain": 15492.017638715062
+      },
+      {
+        "population_fraction": 1.0,
+        "strategy_gain": 15521.35858121263,
+        "random_gain": 15521.35858121263
+      }
+    ],
+    "uplift_by_decile": [
+      {
+        "decile": 1,
+        "households": 53,
+        "treated_mean_sales": 57.79833333333334,
+        "control_mean_sales": 66.86914893617022,
+        "observed_sales_difference": -9.07081560283688
+      },
+      {
+        "decile": 2,
+        "households": 53,
+        "treated_mean_sales": 43.4975,
+        "control_mean_sales": 47.98054054054054,
+        "observed_sales_difference": -4.483040540540536
+      },
+      {
+        "decile": 3,
+        "households": 53,
+        "treated_mean_sales": 31.851,
+        "control_mean_sales": 47.687575757575765,
+        "observed_sales_difference": -15.836575757575766
+      },
+      {
+        "decile": 4,
+        "households": 53,
+        "treated_mean_sales": 68.34105263157895,
+        "control_mean_sales": 35.46911764705882,
+        "observed_sales_difference": 32.871934984520124
+      },
+      {
+        "decile": 5,
+        "households": 53,
+        "treated_mean_sales": 83.56666666666666,
+        "control_mean_sales": 49.59421052631579,
+        "observed_sales_difference": 33.97245614035087
+      },
+      {
+        "decile": 6,
+        "households": 53,
+        "treated_mean_sales": 88.44,
+        "control_mean_sales": 94.94444444444444,
+        "observed_sales_difference": -6.504444444444445
+      },
+      {
+        "decile": 7,
+        "households": 53,
+        "treated_mean_sales": 108.2025,
+        "control_mean_sales": 22.41439024390244,
+        "observed_sales_difference": 85.78810975609755
+      },
+      {
+        "decile": 8,
+        "households": 53,
+        "treated_mean_sales": 0.0,
+        "control_mean_sales": 23.10865384615385,
+        "observed_sales_difference": -23.10865384615385
+      },
+      {
+        "decile": 9,
+        "households": 53,
+        "treated_mean_sales": 104.95849999999999,
+        "control_mean_sales": 82.85181818181817,
+        "observed_sales_difference": 22.106681818181812
+      },
+      {
+        "decile": 10,
+        "households": 52,
+        "treated_mean_sales": 166.59962962962965,
+        "control_mean_sales": 184.44640000000004,
+        "observed_sales_difference": -17.846770370370393
+      }
+    ],
+    "uplift_area": -6190.14865578501,
+    "random_baseline_area": 7760.679290606315,
+    "outperforms_random": false,
+    "heldout_households": 529,
+    "heldout_treatment_fraction": 0.2892249527410208
+  },
+  "propensity_matching": {
+    "method": "1:1 nearest-neighbor propensity matching without replacement",
+    "caliper_standard_deviations_of_logit": 0.2,
+    "treated_matched": 380,
+    "unique_controls_matched": 380,
+    "treated_unmatched": 130,
+    "matched_average_sales_difference": 0.9398421052631534,
+    "max_abs_smd_before": 0.8159772262255784,
+    "max_abs_smd_after": 0.1145722618352477,
+    "features_with_abs_smd_over_0_1_after": 1,
+    "propensity_overlap": {
+      "treated_min": 0.055980109166273086,
+      "treated_max": 0.9984487343343136,
+      "control_min": 0.00321859094671695,
+      "control_max": 0.9734121308023116
+    }
+  },
+  "dowhy_audit": {
+    "estimand": "Estimand type: EstimandType.NONPARAMETRIC_ATE\n\n### Estimand : 1\nEstimand name: backdoor\nEstimand expression:\n     d                                                                         \u21aa\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500(E[outcome|feature_10,feature_2,feature_22,feature_18,feature_20,f \u21aa\nd[treatment]                                                                   \u21aa\n\n\u21aa                                                                              \u21aa\n\u21aa eature_25,feature_6,feature_13,feature_27,feature_30,feature_4,feature_31,fe \u21aa\n\u21aa                                                                              \u21aa\n\n\u21aa                                                                              \u21aa\n\u21aa ature_17,feature_26,feature_34,feature_12,feature_33,feature_3,feature_29,fe \u21aa\n\u21aa                                                                              \u21aa\n\n\u21aa                                                                              \u21aa\n\u21aa ature_37,feature_1,feature_15,feature_0,feature_28,feature_32,feature_16,fea \u21aa\n\u21aa                                                                              \u21aa\n\n\u21aa                                                                              \u21aa\n\u21aa ture_21,feature_23,feature_19,feature_35,feature_24,feature_11,feature_8,fea \u21aa\n\u21aa                                                                              \u21aa\n\n\u21aa                                                   \n\u21aa ture_14,feature_7,feature_36,feature_5,feature_9])\n\u21aa                                                   \nEstimand assumption 1, Unconfoundedness: If U\u2192{treatment} and U\u2192outcome then P(outcome|treatment,feature_10,feature_2,feature_22,feature_18,feature_20,feature_25,feature_6,feature_13,feature_27,feature_30,feature_4,feature_31,feature_17,feature_26,feature_34,feature_12,feature_33,feature_3,feature_29,feature_37,feature_1,feature_15,feature_0,feature_28,feature_32,feature_16,feature_21,feature_23,feature_19,feature_35,feature_24,feature_11,feature_8,feature_14,feature_7,feature_36,feature_5,feature_9,U) = P(outcome|treatment,feature_10,feature_2,feature_22,feature_18,feature_20,feature_25,feature_6,feature_13,feature_27,feature_30,feature_4,feature_31,feature_17,feature_26,feature_34,feature_12,feature_33,feature_3,feature_29,feature_37,feature_1,feature_15,feature_0,feature_28,feature_32,feature_16,feature_21,feature_23,feature_19,feature_35,feature_24,feature_11,feature_8,feature_14,feature_7,feature_36,feature_5,feature_9)\n\n### Estimand : 2\nEstimand name: iv\nNo such variable(s) found!\n\n### Estimand : 3\nEstimand name: frontdoor\nNo such variable(s) found!\n\n### Estimand : 4\nEstimand name: general_adjustment\nEstimand expression:\n     d                                                                         \u21aa\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500(E[outcome|feature_10,feature_2,feature_22,feature_18,feature_20,f \u21aa\nd[treatment]                                                                   \u21aa\n\n\u21aa                                                                              \u21aa\n\u21aa eature_25,feature_6,feature_27,feature_30,feature_13,feature_4,feature_31,fe \u21aa\n\u21aa                                                                              \u21aa\n\n\u21aa                                                                              \u21aa\n\u21aa ature_17,feature_26,feature_34,feature_12,feature_33,feature_3,feature_37,fe \u21aa\n\u21aa                                                                              \u21aa\n\n\u21aa                                                                              \u21aa\n\u21aa ature_29,feature_1,feature_15,feature_0,feature_28,feature_32,feature_16,fea \u21aa\n\u21aa                                                                              \u21aa\n\n\u21aa                                                                              \u21aa\n\u21aa ture_21,feature_23,feature_19,feature_35,feature_24,feature_11,feature_8,fea \u21aa\n\u21aa                                                                              \u21aa\n\n\u21aa                                                   \n\u21aa ture_14,feature_7,feature_36,feature_5,feature_9])\n\u21aa                                                   \nEstimand assumption 1, Unconfoundedness: If U\u2192{treatment} and U\u2192outcome then P(outcome|treatment,feature_10,feature_2,feature_22,feature_18,feature_20,feature_25,feature_6,feature_27,feature_30,feature_13,feature_4,feature_31,feature_17,feature_26,feature_34,feature_12,feature_33,feature_3,feature_37,feature_29,feature_1,feature_15,feature_0,feature_28,feature_32,feature_16,feature_21,feature_23,feature_19,feature_35,feature_24,feature_11,feature_8,feature_14,feature_7,feature_36,feature_5,feature_9,U) = P(outcome|treatment,feature_10,feature_2,feature_22,feature_18,feature_20,feature_25,feature_6,feature_27,feature_30,feature_13,feature_4,feature_31,feature_17,feature_26,feature_34,feature_12,feature_33,feature_3,feature_37,feature_29,feature_1,feature_15,feature_0,feature_28,feature_32,feature_16,feature_21,feature_23,feature_19,feature_35,feature_24,feature_11,feature_8,feature_14,feature_7,feature_36,feature_5,feature_9)\n",
+    "linear_backdoor_effect": 2.5590655364448764,
+    "linearly_independent_confounders": 38,
+    "dropped_collinear_features": 0,
+    "refutations": [
+      {
+        "method": "random_common_cause",
+        "status": "completed",
+        "original_effect": 2.5590655364448764,
+        "refuted_effect": 2.566987869486785,
+        "p_value": 0.9,
+        "summary": "Refute: Add a random common cause\nEstimated effect:2.5590655364448764\nNew effect:2.566987869486785\np value:0.9\n"
+      },
+      {
+        "method": "placebo_treatment_refuter",
+        "status": "completed",
+        "original_effect": 2.5590655364448764,
+        "refuted_effect": -0.3489921363961173,
+        "p_value": 0.45666178943420643,
+        "summary": "Refute: Use a Placebo Treatment\nEstimated effect:2.5590655364448764\nNew effect:-0.3489921363961173\np value:0.45666178943420643\n"
+      },
+      {
+        "method": "data_subset_refuter",
+        "status": "completed",
+        "original_effect": 2.5590655364448764,
+        "refuted_effect": 3.1538569470498614,
+        "p_value": 0.41779706268675787,
+        "summary": "Refute: Use a subset of data\nEstimated effect:2.5590655364448764\nNew effect:3.1538569470498614\np value:0.41779706268675787\n"
+      }
+    ],
+    "interpretation": "Refutation checks probe model stability under specified perturbations; they cannot prove that all hidden confounding is absent.",
+    "completed_refutations": 3
+  },
+  "unobserved_confounder_sensitivity": {
+    "method": "linear omitted-confounder partial-R2 sensitivity",
+    "adjusted_linear_effect": 2.559065536443971,
+    "standard_error": 4.606939785446651,
+    "degrees_of_freedom": 1721,
+    "robustness_value_to_zero": 0.01330058893757915,
+    "scenarios": [
+      {
+        "partial_r2_treatment": 0.01,
+        "partial_r2_outcome": 0.01,
+        "maximum_absolute_bias": 1.920814271130405,
+        "lower_effect_bound": 0.6382512653135659,
+        "upper_effect_bound": 4.479879807574376,
+        "includes_zero": false
+      },
+      {
+        "partial_r2_treatment": 0.05,
+        "partial_r2_outcome": 0.05,
+        "maximum_absolute_bias": 9.804177666925632,
+        "lower_effect_bound": -7.245112130481662,
+        "upper_effect_bound": 12.363243203369603,
+        "includes_zero": true
+      },
+      {
+        "partial_r2_treatment": 0.1,
+        "partial_r2_outcome": 0.1,
+        "maximum_absolute_bias": 20.145670032530692,
+        "lower_effect_bound": -17.58660449608672,
+        "upper_effect_bound": 22.704735568974662,
+        "includes_zero": true
+      }
+    ],
+    "interpretation": "Each scenario assumes a hypothetical unobserved confounder has equal partial R-squared with treatment and outcome, conditional on measured covariates. These are sensitivity bounds, not evidence that such a confounder exists or does not exist."
+  },
+  "caveats": [
+    "Treatment is assignment to campaign 18 (TypeA), not an assigned dollar discount.",
+    "Campaigns with windows overlapping campaign 18 are excluded from the cohort.",
+    "Campaign assignment is observational; matching and refutations do not prove no hidden confounding.",
+    "The sales outcome is household sales during the campaign window; coupon redemptions and realized transaction discounts are not randomized discount offers.",
+    "The individual sales effects are model estimates and are not known individual counterfactuals."
+  ]
+}

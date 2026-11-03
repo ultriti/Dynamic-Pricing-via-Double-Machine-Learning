@@ -1,5 +1,6 @@
 # EconoCausal: Dynamic Pricing via Double Machine Learning
 
+<<<<<<<<< Temporary merge branch 1
 This is the frontend application for the **EconoCausal** project. It provides an interactive dashboard for marketing directors to visualize causal treatment effects, analyze customer segments, and optimize discount allocation using Double Machine Learning (DML).
 
 ## 🚀 Features Built
@@ -45,33 +46,14 @@ The Hillstrom dataset is an email-marketing experiment: it does not contain $10/
 
 ## Technology
 
-- Frontend: React, Vite, React Router, Axios, Tailwind CSS, Plotly.js, Recharts, Lucide React
-- Backend: FastAPI, Pandas, NumPy, scikit-learn, EconML, DoWhy, Uvicorn
-
-## Project structure
-
-```text
-backend/
-  causal_engine.py
-  main.py
-  requirements.txt
-  data/
-  models/
-  tests/
-frontend/
-  src/
-    components/
-    pages/
-    services/api.js
-    App.jsx
-README.md
-```
+- Frontend: React, Vite, React Router, Axios, Plotly.js, Recharts, Lucide React
+- Backend: FastAPI, Pandas, NumPy, scikit-learn, EconML, DoWhy, SciPy, Uvicorn
 
 ## Run locally
 
 ### Backend
 
-From the repository root:
+From the repository root in PowerShell:
 
 ```powershell
 cd backend
@@ -81,7 +63,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-The backend runs at `http://localhost:8000`; interactive API documentation is at `http://localhost:8000/docs`.
+The API runs at `http://localhost:8000`; interactive API documentation is at `http://localhost:8000/docs`.
 
 ### Frontend
 
@@ -93,17 +75,27 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:5173` and navigate to **Causal Lab**.
 
-## Dataset requirements and storage
+## Train the retail archive model
 
-Uploads must be CSV files no larger than 20 MB. Causal analysis expects the Hillstrom columns:
+Place the extracted archive files in `backend/data/archive (2)`. The analysis requires:
 
-`recency, history_segment, history, mens, womens, zip_code, newbie, channel, segment, conversion`
+`campaign_desc.csv`, `campaign_table.csv`, `hh_demographic.csv`, and `transaction_data.csv`
 
-The full sample dataset also has `visit` and `spend`. Uploaded CSVs are stored under `backend/data/uploads`; each browser remembers its active dataset ID, while the backend's storage is shared and persists across server restarts. This setup is for local development only: it has no authentication or per-user access control and should not be exposed to untrusted users.
+Then, from the `backend` directory with its virtual environment active:
 
-The campaign budget is stored in browser local storage and is not sent to the backend. It is a Week 1 planning constraint only; optimization and personalized discount allocation are outside the Weeks 1–2 scope.
+```powershell
+python train_archive_campaign.py
+```
+
+Training reads transaction records in chunks and writes:
+
+- `backend/models/archive_campaign_18_dml.joblib`
+- `backend/data/processed/archive_campaign_18_review.json`
+- `backend/data/processed/archive_campaign_18_scores.csv`
+
+The archive and generated data/model outputs are local files and are not included in source control.
 
 ## API endpoints
 
@@ -113,6 +105,7 @@ The campaign budget is stored in browser local storage and is not sent to the ba
 | GET | `/api/health` | Backend health check |
 | POST | `/api/dataset/upload` | Validate and store a CSV |
 | GET | `/api/dataset/list` | List uploaded datasets |
+| GET | `/api/dataset/inspect` | Preview and inspect any selected upload, including its causal-schema compatibility |
 | GET | `/api/dataset/preview` | Return the first 10 rows |
 | GET | `/api/dataset/summary` | Dataset-level descriptive metrics |
 | GET | `/api/dataset/columns` | Descriptive statistics by column |
@@ -120,27 +113,34 @@ The campaign budget is stored in browser local storage and is not sent to the ba
 | GET | `/api/dataset/distribution/{column}` | Numeric histogram or category counts |
 | GET | `/api/dataset/correlation` | Numeric-column correlation matrix |
 | GET | `/api/dataset/scatter` | Sampled numeric X/Y records |
-| GET | `/api/causal/dag` | Causal graph nodes, edges, and assumptions |
-| GET | `/api/causal/identify` | Identify the graph estimand with DoWhy |
-| POST | `/api/causal/train` | Fit DML and return held-out ITE and uplift evaluation |
+| GET | `/api/causal/dag` | Hillstrom causal graph |
+| GET | `/api/causal/identify` | Identify the Hillstrom graph estimand with DoWhy |
+| POST | `/api/causal/train` | Fit Hillstrom DML and return held-out uplift results |
 | GET | `/api/model/status` | Check legacy saved-model availability |
 | GET | `/api/model/info` | Inspect legacy saved-model metadata |
 | GET | `/api/model/ite` | Run legacy saved-model inference |
+| POST | `/api/archive-campaign/train` | Train and audit the local retail archive analysis |
+| GET | `/api/archive-campaign/report` | Read the saved retail archive review report |
+| GET | `/api/archive-campaign/scores` | Filter and page household-level scores |
 
-Dataset endpoints and causal training accept an optional `dataset_id`; the frontend supplies the active uploaded dataset automatically.
+The Causal Lab reads preview and schema details for the active `dataset_id`. Its DoWhy and DML endpoints require an explicit `dataset_id` and accept only uploads containing the required Hillstrom feature, treatment, and outcome columns. Incompatible uploads still show their own preview and missing-column feedback, but cannot trigger Hillstrom analysis. Archive analysis uses campaign 18 from the local archive and is independent of the active upload.
 
 ## Tests
 
-From the repository root, with backend dependencies installed:
+From the repository root:
 
 ```powershell
 python -m pytest backend\tests -q
 ```
 
-The frontend can be checked with:
+Frontend checks:
 
 ```powershell
 cd frontend
 npm run lint
 npm run build
 ```
+
+## Local-development caveat
+
+Uploaded datasets and generated artifacts are stored locally. The application has no authentication or per-user access control and is intended for local review, not exposure to untrusted users.

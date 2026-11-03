@@ -1,7 +1,10 @@
+from __future__ import annotations
+from typing import Optional
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 import re
+import json
 
 import joblib
 import numpy as np
@@ -12,16 +15,28 @@ from fastapi.encoders import jsonable_encoder
 
 # ----------------------------- import
 from utils.general_helper import json_records, safe_dataset_id, dataset_path
-from causal_engine import train_dml_analysis
-
-
+from causal_engine_exp import train_dml_analysis
+from dependencies.Dataset_filtering import (
+    load_dataset,
+    check_hillstrom_schema,
+    prepare_hillstrom_comparison,
+    encode_model_features,
+    prepare_hillstrom_comparison,
+    load_model,
+    HILLSTROM_COLUMNS,
+)
+from dataset_inspection import inspect_uploaded_dataset
+from archive_campaign import (
+    REPORT_DIR as ARCHIVE_REPORT_DIR,
+    train_archive_campaign_model,
+)
 
 # ---------------------------
 # Paths and application setup
 
 BASE_DIR = Path(__file__).resolve().parent
 
-print("path :",BASE_DIR)
+print("path :", BASE_DIR)
 
 
 UPLOAD_DIR = BASE_DIR / "data" / "uploads"
@@ -52,21 +67,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Hillstrom columns expected for the complete dataset.
-HILLSTROM_COLUMNS = [
-    "recency",
-    "history_segment",
-    "history",
-    "mens",
-    "womens",
-    "zip_code",
-    "newbie",
-    "channel",
-    "segment",
-    "visit",
-    "conversion",
-    "spend",
-]
+@app.get("/api/archive-campaign/report")
+def archive_campaign_report():
+    report_path = ARCHIVE_REPORT_DIR / "archive_campaign_18_review.json"
+    if not report_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="No archive campaign analysis is available. Train it first.",
+        )
+    return json.loads(report_path.read_text(encoding="utf-8"))
+
+
+@app.get("/api/archive-campaign/scores")
+def archive_campaign_scores(
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
+    minimum_effect: float | None = None,
+    query: str | None = None,
+):
+    scores_path = ARCHIVE_REPORT_DIR / "archive_campaign_18_scores.csv"
+    if not scores_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="No archive campaign scores are available. Train the model first.",
+        )
+    scores = pd.read_csv(scores_path)
+    if minimum_effect is not None:
+        scores = scores.loc[scores["estimated_sales_effect"].ge(minimum_effect)]
+    if query:
+        scores = scores.loc[
+            scores["household_key"].astype(str).str.contains(query, case=False, regex=False)
+        ]
+    total = len(scores)
+    page = scores.iloc[offset : offset + limit]
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "scores": json_records(page),
+    }
 
 # Features used for customer-level inference.
 # IMPORTANT: These must match the features and preprocessing used to train the model.
@@ -80,6 +119,9 @@ DEFAULT_FEATURE_COLUMNS = [
     "newbie",
     "channel",
 ]
+<<<<<<< HEAD
+CAUSAL_REQUIRED_COLUMNS = DEFAULT_FEATURE_COLUMNS + ["segment", "conversion"]
+=======
 
 # These category codes were verified against the persisted X.pkl training matrix.
 MODEL_CATEGORY_CODES = {
@@ -101,7 +143,7 @@ MODEL_CATEGORY_CODES = {
 
 
 def load_dataset(
-    dataset_id: str | None = None,
+    dataset_id: Optional[str] = None,
 ) -> tuple[str, pd.DataFrame]:
     """
     Load a dataset by ID if provided.
@@ -265,57 +307,13 @@ def prepare_hillstrom_comparison(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def encode_model_features(features: pd.DataFrame) -> pd.DataFrame:
-    """Apply the category codes used to build the saved model's training matrix."""
-    encoded = features.copy()
-
-    for column, category_codes in MODEL_CATEGORY_CODES.items():
-        if column not in encoded.columns:
-            continue
-
-        numeric_values = pd.to_numeric(encoded[column], errors="coerce")
-        normalized_labels = encoded[column].astype("string").str.strip().str.casefold()
-        category_values = normalized_labels.map(category_codes)
-        encoded[column] = numeric_values.where(numeric_values.notna(), category_values)
-
-    for column in encoded.columns:
-        encoded[column] = pd.to_numeric(encoded[column], errors="coerce")
-
-    invalid_columns = {
-        column: {
-            "rows": encoded.loc[encoded[column].isna()].index.tolist()[:5],
-            "values": features.loc[encoded[column].isna(), column]
-            .astype(str)
-            .unique()
-            .tolist()[:5],
-        }
-        for column in encoded.columns
-        if encoded[column].isna().any()
-    }
-    if invalid_columns:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "message": (
-                    "Model features contain missing or unsupported values after "
-                    "applying the training category codes."
-                ),
-                "invalid_features": invalid_columns,
-                "supported_categories": {
-                    column: sorted(category_codes)
-                    for column, category_codes in MODEL_CATEGORY_CODES.items()
-                    if column in invalid_columns
-                },
-            },
-        )
-
-    return encoded
+    """Keep raw features for the fitted training preprocessor."""
+    return features.copy()
+>>>>>>> 1914f1b799ff59274ad520d94ab8188231c597ea
 
 
 # ---------------------------
 # Basic endpoints
-# ---------------------------
-
-
 @app.get("/")
 def home():
     return {
@@ -337,6 +335,7 @@ def health():
 @app.post("/api/dataset/upload")
 async def upload_dataset(file: UploadFile = File(...)):
     """Upload any CSV; report whether it has the expected Hillstrom columns."""
+
     if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a .csv file.")
 
@@ -351,6 +350,7 @@ async def upload_dataset(file: UploadFile = File(...)):
     try:
         df = pd.read_csv(BytesIO(content))
         df.columns = df.columns.astype(str).str.strip()
+
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Could not parse CSV: {exc}")
 
@@ -400,8 +400,27 @@ def list_datasets():
     return {"total": len(datasets), "datasets": datasets}
 
 
+@app.get("/api/dataset/inspect")
+def inspect_dataset(dataset_id: str = Query(...)):
+    """Inspect an uploaded CSV without imposing Hillstrom model requirements."""
+    path = dataset_path(dataset_id)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+    try:
+        return inspect_uploaded_dataset(
+            path,
+            dataset_id,
+            causal_required_columns=CAUSAL_REQUIRED_COLUMNS,
+            hillstrom_required_columns=HILLSTROM_COLUMNS,
+        )
+    except (UnicodeDecodeError, pd.errors.ParserError, ValueError) as exc:
+        raise HTTPException(
+            status_code=400, detail=f"Could not inspect uploaded CSV: {exc}"
+        ) from exc
+
+
 @app.get("/api/dataset/preview")
-def dataset_preview(dataset_id: str | None = None):
+def dataset_preview(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     return {
         "dataset_id": dataset_id,
@@ -410,10 +429,11 @@ def dataset_preview(dataset_id: str | None = None):
         "data": json_records(df.head(10)),
     }
 
+
 # -----------------------------------
 # csv file summary
 @app.get("/api/dataset/summary")
-def dataset_summary(dataset_id: str | None = None):
+def dataset_summary(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
 
     # get all details of the csv ----
@@ -446,22 +466,37 @@ def dataset_summary(dataset_id: str | None = None):
 
 
 @app.get("/api/dataset/columns")
-def dataset_columns(dataset_id: str | None = None):
+def dataset_columns(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     stats = (
         df.describe(include="all")
         .astype(object)
         .where(pd.notna(df.describe(include="all")), None)
     )
+    # print({"dataset_id": dataset_id, "stats": jsonable_encoder(stats.to_dict())})
     return {"dataset_id": dataset_id, "stats": jsonable_encoder(stats.to_dict())}
 
 
+# -----------------------------
+# yet not implemented - frontend
+
+
 @app.get("/api/dataset/value-counts/{column}")
-def dataset_value_counts(column: str, dataset_id: str | None = None):
+def dataset_value_counts(column: str, dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     if column not in df.columns:
         raise HTTPException(status_code=400, detail=f"Column '{column}' not found.")
     counts = df[column].value_counts(dropna=False)
+    print(
+        {
+            "dataset_id": dataset_id,
+            "column": column,
+            "counts": {
+                str(key) if pd.notna(key) else "(Missing)": int(value)
+                for key, value in counts.items()
+            },
+        }
+    )
     return {
         "dataset_id": dataset_id,
         "column": column,
@@ -472,8 +507,10 @@ def dataset_value_counts(column: str, dataset_id: str | None = None):
     }
 
 
+# ----------------------------
+# correlation matrix graph
 @app.get("/api/dataset/correlation")
-def dataset_correlation(dataset_id: str | None = None):
+def dataset_correlation(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     numeric = df.select_dtypes(include="number")
     corr = numeric.corr().round(3).astype(object)
@@ -488,7 +525,7 @@ def dataset_correlation(dataset_id: str | None = None):
 @app.get("/api/dataset/distribution/{column}")
 def dataset_distribution(
     column: str,
-    dataset_id: str | None = None,
+    dataset_id: Optional[str] = None,
     bins: int = Query(default=20, ge=1, le=100),
 ):
     dataset_id, df = load_dataset(dataset_id)
@@ -509,6 +546,16 @@ def dataset_distribution(
         }
 
     counts = values.astype(str).value_counts()
+
+    # print(
+    #     {
+    #         "dataset_id": dataset_id,
+    #         "column": column,
+    #         "type": "categorical",
+    #         "labels": counts.index.tolist(),
+    #         "values": counts.astype(int).tolist(),
+    #     }
+    # )
     return {
         "dataset_id": dataset_id,
         "column": column,
@@ -517,12 +564,13 @@ def dataset_distribution(
         "values": counts.astype(int).tolist(),
     }
 
-
+# -----------------------------
+# scatter plot map
 @app.get("/api/dataset/scatter")
 def dataset_scatter(
     x: str = "history",
     y: str = "spend",
-    dataset_id: str | None = None,
+    dataset_id: Optional[str] = None,
     sample: int = Query(default=500, ge=1, le=5000),
 ):
     dataset_id, df = load_dataset(dataset_id)
@@ -619,7 +667,11 @@ def causal_dag():
 
 
 @app.get("/api/causal/identify")
-def identify_causal_effect(dataset_id: str | None = None):
+<<<<<<< HEAD
+def identify_causal_effect(dataset_id: str = Query(...)):
+=======
+def identify_causal_effect(dataset_id: Optional[str] = None):
+>>>>>>> 1914f1b799ff59274ad520d94ab8188231c597ea
     """Use DoWhy to identify an average effect for Womens E-Mail vs No E-Mail."""
     try:
         from dowhy import CausalModel
@@ -676,6 +728,7 @@ def identify_causal_effect(dataset_id: str | None = None):
             graph=graph,
         )
         estimand = model.identify_effect()
+        
         return {
             "dataset_id": resolved_id,
             "treatment": "Womens E-Mail vs No E-Mail",
@@ -695,7 +748,11 @@ def identify_causal_effect(dataset_id: str | None = None):
 
 
 @app.post("/api/causal/train")
-def train_causal_model(dataset_id: str | None = None):
+<<<<<<< HEAD
+def train_causal_model(dataset_id: str = Query(...)):
+=======
+def train_causal_model(dataset_id: Optional[str] = None):
+>>>>>>> 1914f1b799ff59274ad520d94ab8188231c597ea
     """Fit an EconML DML causal forest and evaluate uplift on held-out customers."""
     resolved_id, df = load_dataset(dataset_id)
     try:
@@ -709,6 +766,29 @@ def train_causal_model(dataset_id: str | None = None):
             status_code=422,
             detail=f"DML training or held-out evaluation failed: {exc}",
         ) from exc
+
+    model = result.pop("_model")
+    preprocessor = result.pop("_preprocessor")
+    feature_columns = result.pop("_feature_columns")
+
+    customers = result.pop("customers", [])
+    result["customers"] = customers[:10]
+
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    joblib.dump(
+        {
+            "model": model,
+            "preprocessor": preprocessor,
+            "feature_columns": feature_columns,
+            "metadata": {
+                "dataset_id": resolved_id,
+                "treatment": result.get("treatment"),
+                "outcome": result.get("outcome"),
+            },
+        },
+        MODEL_PATH,
+    )
 
     return {
         "dataset_id": resolved_id,
@@ -745,7 +825,7 @@ def model_info():
 
 
 @app.get("/api/model/ite")
-def model_ite(dataset_id: str | None = None):
+def model_ite(dataset_id: Optional[str] = None):
     """Estimate ITEs for uploaded data using the saved model."""
     resolved_id, df = load_dataset(dataset_id)
     model, features, preprocessor, metadata = load_model()
@@ -808,7 +888,7 @@ def model_ite(dataset_id: str | None = None):
 
 
 @app.get("/api/model/uplift-data")
-def uplift_data(dataset_id: str | None = None):
+def uplift_data(dataset_id: Optional[str] = None):
     """
     Return scored rows and observed outcomes to support frontend uplift/Qini charts.
     This endpoint supplies data; it does not claim that a Qini score has been validated.
@@ -862,3 +942,18 @@ def uplift_data(dataset_id: str | None = None):
             "method. Do not evaluate causal uplift on the same data used to fit the model."
         ),
     }
+
+
+@app.post("/api/archive-campaign/train")
+def train_archive_campaign():
+    """Train and audit a household-level model on the local campaign archive."""
+    try:
+        result = train_archive_campaign_model()
+        return {
+            "report": result["report"],
+            "scores_total": len(result["scores"]),
+        }
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

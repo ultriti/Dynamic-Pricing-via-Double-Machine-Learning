@@ -7,6 +7,8 @@ import { ErrorMessage, LoadingSpinner } from "../components/Feedback";
 import StatCard from "../components/StatCard";
 import {
   fetchCausalDag,
+  fetchDatasetDetails,
+  getActiveDatasetId,
   getApiErrorMessage,
   identifyCausalEffect,
   trainCausalModel,
@@ -15,6 +17,24 @@ import {
 const PAGE_SIZE = 50;
 
 export default function ModelAnalysis() {
+  const [datasetId, setDatasetId] = useState(getActiveDatasetId);
+  useEffect(() => {
+    const updateDataset = () => setDatasetId(getActiveDatasetId());
+    window.addEventListener("storage", updateDataset);
+    window.addEventListener("econocausal:activeDatasetChanged", updateDataset);
+    return () => {
+      window.removeEventListener("storage", updateDataset);
+      window.removeEventListener("econocausal:activeDatasetChanged", updateDataset);
+    };
+  }, []);
+
+  return <CausalLab key={datasetId ?? "no-dataset"} datasetId={datasetId} />;
+}
+
+function CausalLab({ datasetId }) {
+  const [datasetDetails, setDatasetDetails] = useState(null);
+  const [datasetLoading, setDatasetLoading] = useState(Boolean(datasetId));
+  const [datasetError, setDatasetError] = useState(null);
   const [dag, setDag] = useState(null);
   const [dagError, setDagError] = useState(null);
   const [identification, setIdentification] = useState(null);
@@ -28,27 +48,49 @@ export default function ModelAnalysis() {
 
   useEffect(() => {
     let active = true;
-    fetchCausalDag()
-      .then((data) => {
-        if (active) setDag(data);
-      })
-      .catch((requestError) => {
-        if (active) setDagError(getApiErrorMessage(requestError));
-      });
+    if (!datasetId) {
+      return () => {
+        active = false;
+      };
+    }
+
+    const loadActiveDataset = async () => {
+      try {
+        const details = await fetchDatasetDetails(datasetId);
+        if (!active) return;
+        setDatasetDetails(details);
+        if (details.causal_compatibility.compatible) {
+          try {
+            const graph = await fetchCausalDag();
+            if (active) setDag(graph);
+          } catch (requestError) {
+            if (active) setDagError(getApiErrorMessage(requestError));
+          }
+        }
+      } catch (requestError) {
+        if (active) setDatasetError(getApiErrorMessage(requestError));
+      } finally {
+        if (active) setDatasetLoading(false);
+      }
+    };
+    loadActiveDataset();
     return () => {
       active = false;
     };
-  }, []);
+  }, [datasetId]);
 
   const runIdentification = async () => {
     setIdentifying(true);
     setDagError(null);
     try {
-      setIdentification(await identifyCausalEffect());
+      const identified = await identifyCausalEffect(datasetId);
+      if (getActiveDatasetId() === datasetId) setIdentification(identified);
     } catch (requestError) {
-      setDagError(getApiErrorMessage(requestError));
+      if (getActiveDatasetId() === datasetId) {
+        setDagError(getApiErrorMessage(requestError));
+      }
     } finally {
-      setIdentifying(false);
+      if (getActiveDatasetId() === datasetId) setIdentifying(false);
     }
   };
 
@@ -58,11 +100,14 @@ export default function ModelAnalysis() {
     setResult(null);
     setPage(0);
     try {
-      setResult(await trainCausalModel());
+      const analysis = await trainCausalModel(datasetId);
+      if (getActiveDatasetId() === datasetId) setResult(analysis);
     } catch (requestError) {
-      setError(getApiErrorMessage(requestError));
+      if (getActiveDatasetId() === datasetId) {
+        setError(getApiErrorMessage(requestError));
+      }
     } finally {
-      setTraining(false);
+      if (getActiveDatasetId() === datasetId) setTraining(false);
     }
   };
 
@@ -102,6 +147,81 @@ export default function ModelAnalysis() {
       <section className="panel causal-section">
         <div className="panel-heading">
           <div>
+            <h2>Selected dataset</h2>
+            <p>Preview and schema checks are always tied to the currently selected upload.</p>
+          </div>
+        </div>
+        {!datasetId ? (
+          <>
+            <p className="causal-note">Choose or upload a dataset before viewing its details or running causal analysis.</p>
+            <Link className="button button-secondary" to="/upload">Choose dataset</Link>
+          </>
+        ) : datasetLoading ? (
+          <LoadingSpinner label="Loading selected dataset details…" />
+        ) : datasetError ? (
+          <ErrorMessage message={datasetError} />
+        ) : datasetDetails ? (
+          <>
+            <div className="model-info">
+              <div><strong>Dataset ID</strong><span>{datasetDetails.dataset_id}</span></div>
+              <div><strong>Rows</strong><span>{datasetDetails.rows.toLocaleString()}</span></div>
+              <div><strong>Columns</strong><span>{datasetDetails.columns.length}</span></div>
+              <div><strong>Missing values</strong><span>{datasetDetails.missing_values.toLocaleString()}</span></div>
+              <div>
+                <strong>Causal schema</strong>
+                <span>{datasetDetails.causal_compatibility.compatible ? "Ready for Hillstrom DML" : "Not compatible"}</span>
+              </div>
+            </div>
+            <p className="causal-note">
+              Required for this analysis: {datasetDetails.causal_compatibility.required_columns.join(", ")}.
+            </p>
+            {!datasetDetails.causal_compatibility.compatible && (
+              <p className="causal-note">
+                This dataset is previewed as uploaded, but causal analysis is disabled because it is missing:{" "}
+                {datasetDetails.causal_compatibility.missing_columns.join(", ")}.
+              </p>
+            )}
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>{datasetDetails.columns.map((column) => <th key={column}>{column}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {datasetDetails.preview.map((row, rowIndex) => (
+                    <tr key={`${datasetDetails.dataset_id}-${rowIndex}`}>
+                      {datasetDetails.columns.map((column) => (
+                        <td key={column}>{row[column] == null ? "—" : String(row[column])}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr><th>Column</th><th>Type</th><th>Missing</th><th>Unique values</th></tr>
+                </thead>
+                <tbody>
+                  {datasetDetails.column_details.map((column) => (
+                    <tr key={column.name}>
+                      <td>{column.name}</td><td>{column.dtype}</td>
+                      <td>{column.missing_values.toLocaleString()}</td>
+                      <td>{column.unique_values.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : null}
+      </section>
+
+      {datasetDetails?.causal_compatibility.compatible && (
+        <>
+      <section className="panel causal-section">
+        <div className="panel-heading">
+          <div>
             <h2><GitBranch size={18} aria-hidden="true" /> Week 1 · Causal graph</h2>
             <p>Confounders affect both campaign assignment and conversion; post-treatment visits are excluded.</p>
           </div>
@@ -137,7 +257,7 @@ export default function ModelAnalysis() {
               )}
             </div>
           </>
-        ) : !dagError ? <LoadingSpinner label="Loading causal graph…" /> : null}
+        ) : !dagError && datasetLoading ? <LoadingSpinner label="Loading causal graph…" /> : null}
       </section>
 
       <section className="panel causal-section">
@@ -157,7 +277,7 @@ export default function ModelAnalysis() {
           </button>
         </div>
         <p className="causal-note">
-          This mock retail analysis compares Womens E-Mail with No E-Mail for conversion. The Hillstrom data does not contain discount amounts, so these results do not estimate $10 vs $20 discount effects.
+          Training uses dataset {datasetDetails.dataset_id}. For Hillstrom-compatible data, treatment is Womens E-Mail versus No E-Mail and outcome is conversion; the data does not estimate dollar-discount effects.
         </p>
         {training && <LoadingSpinner label="Fitting cross-fitted causal forest and scoring held-out customers…" />}
         {error && <ErrorMessage message={error} />}
@@ -169,7 +289,7 @@ export default function ModelAnalysis() {
             <StatCard
               label="Customers scored"
               value={result.customers_scored.toLocaleString()}
-              note="Held-out observations"
+              note="Eligible comparison cohort"
               icon={Users}
             />
             <StatCard
@@ -203,7 +323,7 @@ export default function ModelAnalysis() {
               <div>
                 <h2>Customer-level treatment effects</h2>
                 <p>
-                  {result.customers_scored.toLocaleString()} held-out scores · {result.customer_rows_returned.toLocaleString()} rows available for filtering
+                  {result.customers_scored.toLocaleString()} eligible customers scored · {result.customer_rows_returned.toLocaleString()} rows available for filtering
                 </p>
               </div>
               <div className="causal-filters">
@@ -272,6 +392,8 @@ export default function ModelAnalysis() {
               </div>
             </div>
           </section>
+        </>
+      )}
         </>
       )}
     </div>

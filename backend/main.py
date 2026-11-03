@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Optional
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
@@ -117,7 +119,197 @@ DEFAULT_FEATURE_COLUMNS = [
     "newbie",
     "channel",
 ]
+<<<<<<< HEAD
 CAUSAL_REQUIRED_COLUMNS = DEFAULT_FEATURE_COLUMNS + ["segment", "conversion"]
+=======
+
+# These category codes were verified against the persisted X.pkl training matrix.
+MODEL_CATEGORY_CODES = {
+    "zip_code": {
+        "rural": 0,
+        "surburban": 1,
+        "suburban": 1,
+        "urban": 2,
+    },
+    "channel": {
+        "multichannel": 0,
+        "phone": 1,
+        "web": 2,
+    },
+}
+
+# --------------------------
+# load dataset 
+
+
+def load_dataset(
+    dataset_id: Optional[str] = None,
+) -> tuple[str, pd.DataFrame]:
+    """
+    Load a dataset by ID if provided.
+    Otherwise, find the latest uploaded CSV with the required features.
+    """
+
+    if dataset_id is not None:
+        # Explicit ID: load that particular dataset.
+        path = dataset_path(dataset_id)
+
+        if not path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail="Dataset not found.",
+            )
+
+        candidates = [(dataset_id, path)]
+
+    else:
+        # No ID: search all uploaded CSVs by their features.
+        paths = list(UPLOAD_DIR.glob("*.csv"))
+
+        if not paths:
+            raise HTTPException(
+                status_code=404,
+                detail="No dataset uploaded yet.",
+            )
+
+        candidates = [
+            (path.stem, path)
+            for path in sorted(
+                paths,
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+        ]
+
+    for candidate_id, path in candidates:
+        try:
+            # Read only the header first to check feature compatibility.
+            columns = set(
+                pd.read_csv(path, nrows=0).columns.astype(str).str.strip()
+            )
+
+            missing_features = set(DEFAULT_FEATURE_COLUMNS) - columns
+
+            if missing_features:
+                if dataset_id is not None:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "message": "Dataset does not have the required features.",
+                            "missing_features": sorted(missing_features),
+                        },
+                    )
+                continue
+
+            df = pd.read_csv(path)
+            df.columns = df.columns.astype(str).str.strip()
+
+        except HTTPException:
+            raise
+        except Exception as exc:
+            if dataset_id is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Could not read CSV: {exc}",
+                )
+            continue
+
+        if df.empty:
+            continue
+
+        return candidate_id, df
+
+    raise HTTPException(
+        status_code=422,
+        detail=(
+            "No compatible dataset found. "
+            "Upload a CSV containing all required features."
+        ),
+    )
+
+
+# --------------------------
+#  check hailstraom schema 
+
+def check_hillstrom_schema(df: pd.DataFrame) -> dict:
+    missing = [col for col in HILLSTROM_COLUMNS if col not in df.columns]
+    return {
+        "compatible_columns": len(missing) == 0,
+        "missing_columns": missing,
+        "extra_columns": [col for col in df.columns if col not in HILLSTROM_COLUMNS],
+        "message": (
+            "All expected Hillstrom columns are present."
+            if not missing
+            else "This dataset is missing required Hillstrom columns."
+        ),
+    }
+
+# --------------------------
+# load trained model 
+
+def load_model():
+    """Load a trusted model bundle or estimator from the configured file."""
+    if not MODEL_PATH.is_file():
+        raise HTTPException(
+            status_code=503,
+            detail=f"Saved model not found at: {MODEL_PATH}",
+        )
+    try:
+        saved = joblib.load(MODEL_PATH)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Could not load model: {exc}")
+
+    # Preferred format: a dictionary with model and training metadata.
+    if isinstance(saved, dict) and "model" in saved:
+        model = saved["model"]
+        features = saved.get("feature_columns", DEFAULT_FEATURE_COLUMNS)
+        preprocessor = saved.get("preprocessor")
+        metadata = saved
+    else:
+        # Supports a directly saved estimator, but cannot infer its preprocessing.
+        model = saved
+        features = DEFAULT_FEATURE_COLUMNS
+        preprocessor = None
+        metadata = {}
+
+    return model, list(features), preprocessor, metadata
+
+
+# ----------------------------
+# compae the given data wih hailstroam - make itgeneric to comapre
+
+def prepare_hillstrom_comparison(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Make a binary comparison:
+    Womens E-Mail = T=1; No E-Mail = T=0.
+    Exclude Mens E-Mail because it is a different treatment arm.
+    """
+    if "segment" not in df.columns:
+        raise HTTPException(
+            status_code=400, detail="Missing 'segment' treatment column."
+        )
+
+    allowed = ["Womens E-Mail", "No E-Mail"]
+    selected = df[df["segment"].isin(allowed)].copy()
+    if selected.empty:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "No rows found for 'Womens E-Mail' or 'No E-Mail'. "
+                "Check the exact values in the segment column."
+            ),
+        )
+
+    selected["email_treatment"] = (
+        selected["segment"].astype(str).str.strip().eq("Womens E-Mail")
+    ).astype(int)
+    return selected
+
+
+def encode_model_features(features: pd.DataFrame) -> pd.DataFrame:
+    """Keep raw features for the fitted training preprocessor."""
+    return features.copy()
+>>>>>>> 1914f1b799ff59274ad520d94ab8188231c597ea
 
 
 # ---------------------------
@@ -228,7 +420,7 @@ def inspect_dataset(dataset_id: str = Query(...)):
 
 
 @app.get("/api/dataset/preview")
-def dataset_preview(dataset_id: str | None = None):
+def dataset_preview(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     return {
         "dataset_id": dataset_id,
@@ -241,7 +433,7 @@ def dataset_preview(dataset_id: str | None = None):
 # -----------------------------------
 # csv file summary
 @app.get("/api/dataset/summary")
-def dataset_summary(dataset_id: str | None = None):
+def dataset_summary(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
 
     # get all details of the csv ----
@@ -274,7 +466,7 @@ def dataset_summary(dataset_id: str | None = None):
 
 
 @app.get("/api/dataset/columns")
-def dataset_columns(dataset_id: str | None = None):
+def dataset_columns(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     stats = (
         df.describe(include="all")
@@ -290,7 +482,7 @@ def dataset_columns(dataset_id: str | None = None):
 
 
 @app.get("/api/dataset/value-counts/{column}")
-def dataset_value_counts(column: str, dataset_id: str | None = None):
+def dataset_value_counts(column: str, dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     if column not in df.columns:
         raise HTTPException(status_code=400, detail=f"Column '{column}' not found.")
@@ -318,7 +510,7 @@ def dataset_value_counts(column: str, dataset_id: str | None = None):
 # ----------------------------
 # correlation matrix graph
 @app.get("/api/dataset/correlation")
-def dataset_correlation(dataset_id: str | None = None):
+def dataset_correlation(dataset_id: Optional[str] = None):
     dataset_id, df = load_dataset(dataset_id)
     numeric = df.select_dtypes(include="number")
     corr = numeric.corr().round(3).astype(object)
@@ -333,7 +525,7 @@ def dataset_correlation(dataset_id: str | None = None):
 @app.get("/api/dataset/distribution/{column}")
 def dataset_distribution(
     column: str,
-    dataset_id: str | None = None,
+    dataset_id: Optional[str] = None,
     bins: int = Query(default=20, ge=1, le=100),
 ):
     dataset_id, df = load_dataset(dataset_id)
@@ -378,7 +570,7 @@ def dataset_distribution(
 def dataset_scatter(
     x: str = "history",
     y: str = "spend",
-    dataset_id: str | None = None,
+    dataset_id: Optional[str] = None,
     sample: int = Query(default=500, ge=1, le=5000),
 ):
     dataset_id, df = load_dataset(dataset_id)
@@ -475,7 +667,11 @@ def causal_dag():
 
 
 @app.get("/api/causal/identify")
+<<<<<<< HEAD
 def identify_causal_effect(dataset_id: str = Query(...)):
+=======
+def identify_causal_effect(dataset_id: Optional[str] = None):
+>>>>>>> 1914f1b799ff59274ad520d94ab8188231c597ea
     """Use DoWhy to identify an average effect for Womens E-Mail vs No E-Mail."""
     try:
         from dowhy import CausalModel
@@ -552,7 +748,11 @@ def identify_causal_effect(dataset_id: str = Query(...)):
 
 
 @app.post("/api/causal/train")
+<<<<<<< HEAD
 def train_causal_model(dataset_id: str = Query(...)):
+=======
+def train_causal_model(dataset_id: Optional[str] = None):
+>>>>>>> 1914f1b799ff59274ad520d94ab8188231c597ea
     """Fit an EconML DML causal forest and evaluate uplift on held-out customers."""
     resolved_id, df = load_dataset(dataset_id)
     try:
@@ -566,6 +766,29 @@ def train_causal_model(dataset_id: str = Query(...)):
             status_code=422,
             detail=f"DML training or held-out evaluation failed: {exc}",
         ) from exc
+
+    model = result.pop("_model")
+    preprocessor = result.pop("_preprocessor")
+    feature_columns = result.pop("_feature_columns")
+
+    customers = result.pop("customers", [])
+    result["customers"] = customers[:10]
+
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    joblib.dump(
+        {
+            "model": model,
+            "preprocessor": preprocessor,
+            "feature_columns": feature_columns,
+            "metadata": {
+                "dataset_id": resolved_id,
+                "treatment": result.get("treatment"),
+                "outcome": result.get("outcome"),
+            },
+        },
+        MODEL_PATH,
+    )
 
     return {
         "dataset_id": resolved_id,
@@ -602,7 +825,7 @@ def model_info():
 
 
 @app.get("/api/model/ite")
-def model_ite(dataset_id: str | None = None):
+def model_ite(dataset_id: Optional[str] = None):
     """Estimate ITEs for uploaded data using the saved model."""
     resolved_id, df = load_dataset(dataset_id)
     model, features, preprocessor, metadata = load_model()
@@ -665,7 +888,7 @@ def model_ite(dataset_id: str | None = None):
 
 
 @app.get("/api/model/uplift-data")
-def uplift_data(dataset_id: str | None = None):
+def uplift_data(dataset_id: Optional[str] = None):
     """
     Return scored rows and observed outcomes to support frontend uplift/Qini charts.
     This endpoint supplies data; it does not claim that a Qini score has been validated.

@@ -155,7 +155,6 @@ def train_dml_analysis(
         ],
         sparse_threshold=0,
     )
-
     treatment = selected["email_treatment"].to_numpy(dtype=int)
     outcome = selected["conversion"].to_numpy(dtype=float)
     row_indices = np.arange(len(selected))
@@ -226,6 +225,9 @@ def train_dml_analysis(
     ]
 
     return {
+        "_model": estimator,
+        "_preprocessor": preprocessor,
+        "_feature_columns": feature_columns,
         "treatment": "Womens E-Mail (T=1) vs No E-Mail (T=0)",
         "outcome": "conversion",
         "estimator": "EconML CausalForestDML",

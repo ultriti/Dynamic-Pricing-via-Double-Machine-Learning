@@ -10,7 +10,7 @@ def preprocess_retail_data():
     if not RAW_PATH.exists():
         raise FileNotFoundError(f"Dataset not found: {RAW_PATH}")
 
-    df = pd.read_excel(RAW_PATH)
+    df = pd.read_excel(RAW_PATH, parse_dates=["InvoiceDate"])
 
     initial_rows = len(df)
 

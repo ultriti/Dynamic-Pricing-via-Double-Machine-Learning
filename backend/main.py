@@ -2,32 +2,43 @@ from __future__ import annotations
 from typing import Optional
 from io import BytesIO
 from pathlib import Path
-from uuid import uuid4
-import re
+from uuid import UUID, uuid4
+from datetime import datetime, timezone
+import json
+import logging
 
 import joblib
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel, Field
 
 # ----------------------------- import
-from utils.general_helper import json_records, safe_dataset_id, dataset_path
-from causal_engine import train_dml_analysis
-
-
+from utils.general_helper import json_records, dataset_path
+from causal_engine_exp import train_dml_analysis
+from dependencies.Dataset_filtering import HILLSTROM_COLUMNS
+from dataset_inspection import inspect_uploaded_dataset
+from archive_campaign import (
+    REPORT_DIR as ARCHIVE_REPORT_DIR,
+    train_archive_campaign_model,
+)
+from budget_optimization import optimize_allocation
 
 # ---------------------------
 # Paths and application setup
 
 BASE_DIR = Path(__file__).resolve().parent
 
-print("path :",BASE_DIR)
+print("path :", BASE_DIR)
 
 
 UPLOAD_DIR = BASE_DIR / "data" / "uploads"
 MODEL_PATH = BASE_DIR / "models" / "conversion_causal_forest_v1.joblib"
+MODEL_VERSIONS_DIR = BASE_DIR / "models" / "versions"
+ALLOCATION_DIR = BASE_DIR / "data" / "allocations"
 RAW_HILLSTROM_PATH = (
     BASE_DIR
     / "data"
@@ -38,12 +49,14 @@ RAW_HILLSTROM_PATH = (
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+ALLOCATION_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title="EconoCausal API",
     description="Hillstrom dataset exploration and causal-effect analysis",
     version="1.0.0",
 )
+logger = logging.getLogger(__name__)
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,21 +67,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Hillstrom columns expected for the complete dataset.
-HILLSTROM_COLUMNS = [
-    "recency",
-    "history_segment",
-    "history",
-    "mens",
-    "womens",
-    "zip_code",
-    "newbie",
-    "channel",
-    "segment",
-    "visit",
-    "conversion",
-    "spend",
-]
+@app.get("/api/archive-campaign/report")
+def archive_campaign_report():
+    report_path = ARCHIVE_REPORT_DIR / "archive_campaign_18_review.json"
+    if not report_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="No archive campaign analysis is available. Train it first.",
+        )
+    return json.loads(report_path.read_text(encoding="utf-8"))
+
+
+@app.get("/api/archive-campaign/scores")
+def archive_campaign_scores(
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
+    minimum_effect: float | None = None,
+    query: str | None = None,
+):
+    scores_path = ARCHIVE_REPORT_DIR / "archive_campaign_18_scores.csv"
+    if not scores_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="No archive campaign scores are available. Train the model first.",
+        )
+    scores = pd.read_csv(scores_path)
+    if minimum_effect is not None:
+        scores = scores.loc[scores["estimated_sales_effect"].ge(minimum_effect)]
+    if query:
+        scores = scores.loc[
+            scores["household_key"].astype(str).str.contains(query, case=False, regex=False)
+        ]
+    total = len(scores)
+    page = scores.iloc[offset : offset + limit]
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "scores": json_records(page),
+    }
 
 # Features used for customer-level inference.
 # IMPORTANT: These must match the features and preprocessing used to train the model.
@@ -82,21 +119,7 @@ DEFAULT_FEATURE_COLUMNS = [
     "newbie",
     "channel",
 ]
-
-# These category codes were verified against the persisted X.pkl training matrix.
-MODEL_CATEGORY_CODES = {
-    "zip_code": {
-        "rural": 0,
-        "surburban": 1,
-        "suburban": 1,
-        "urban": 2,
-    },
-    "channel": {
-        "multichannel": 0,
-        "phone": 1,
-        "web": 2,
-    },
-}
+CAUSAL_REQUIRED_COLUMNS = DEFAULT_FEATURE_COLUMNS + ["segment", "conversion"]
 
 # --------------------------
 # load dataset 
@@ -188,6 +211,33 @@ def load_dataset(
     )
 
 
+def load_exploration_dataset(
+    dataset_id: Optional[str] = None,
+) -> tuple[str, pd.DataFrame]:
+    """Load any uploaded CSV for generic descriptive exploration."""
+    if dataset_id is not None:
+        path = dataset_path(dataset_id)
+        resolved_id = dataset_id
+    else:
+        paths = sorted(
+            UPLOAD_DIR.glob("*.csv"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
+        if not paths:
+            raise HTTPException(status_code=404, detail="No dataset uploaded yet.")
+        path = paths[0]
+        resolved_id = path.stem
+    try:
+        frame = pd.read_csv(path)
+        frame.columns = frame.columns.astype(str).str.strip()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400, detail=f"Could not read uploaded CSV: {exc}"
+        ) from exc
+    return resolved_id, frame
+
+
 # --------------------------
 #  check hailstraom schema 
 
@@ -207,15 +257,24 @@ def check_hillstrom_schema(df: pd.DataFrame) -> dict:
 # --------------------------
 # load trained model 
 
+def active_model_path() -> Path:
+    versions = sorted(
+        MODEL_VERSIONS_DIR.glob("causal_forest_*.joblib"),
+        key=lambda item: item.stat().st_mtime,
+    )
+    return versions[-1] if versions else MODEL_PATH
+
+
 def load_model():
     """Load a trusted model bundle or estimator from the configured file."""
-    if not MODEL_PATH.is_file():
+    model_path = active_model_path()
+    if not model_path.is_file():
         raise HTTPException(
             status_code=503,
-            detail=f"Saved model not found at: {MODEL_PATH}",
+            detail=f"Saved model not found at: {model_path}",
         )
     try:
-        saved = joblib.load(MODEL_PATH)
+        saved = joblib.load(model_path)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Could not load model: {exc}")
 
@@ -224,7 +283,7 @@ def load_model():
         model = saved["model"]
         features = saved.get("feature_columns", DEFAULT_FEATURE_COLUMNS)
         preprocessor = saved.get("preprocessor")
-        metadata = saved
+        metadata = saved.get("metadata", {})
     else:
         # Supports a directly saved estimator, but cannot infer its preprocessing.
         model = saved
@@ -233,6 +292,65 @@ def load_model():
         metadata = {}
 
     return model, list(features), preprocessor, metadata
+
+
+def validate_model_dataset(
+    dataset_id: str, features: list[str], metadata: dict, frame: pd.DataFrame
+) -> None:
+    """Prevent inference against datasets other than the model's training upload."""
+    expected_dataset_id = metadata.get("dataset_id")
+    if not expected_dataset_id:
+        raise HTTPException(
+            status_code=409,
+            detail="The saved model has no dataset compatibility metadata; retrain it.",
+        )
+    if expected_dataset_id != dataset_id:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "The saved model was trained on a different dataset. "
+                "Train a model for the selected dataset before scoring or allocation."
+            ),
+        )
+    if metadata.get("feature_columns") != features:
+        raise HTTPException(
+            status_code=409,
+            detail="The saved model feature schema is incompatible; retrain the model.",
+        )
+    expected_schema = metadata.get("feature_schema")
+    if not expected_schema or any(
+        column not in frame.columns
+        or str(frame[column].dtype) != expected_schema.get(column)
+        for column in features
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="The selected dataset feature types do not match model training.",
+        )
+    if metadata.get("outcome") != "conversion" or metadata.get(
+        "treatment_definition"
+    ) != "Womens E-Mail (T=1) vs No E-Mail (T=0)":
+        raise HTTPException(
+            status_code=409,
+            detail="The saved model treatment or outcome definition is incompatible.",
+        )
+
+
+class SegmentAllocationLimit(BaseModel):
+    min_customers: int = Field(default=0, ge=0)
+    max_customers: int | None = Field(default=None, ge=0)
+
+
+class AllocationRequest(BaseModel):
+    dataset_id: str = Field(min_length=1)
+    budget: float = Field(gt=0)
+    intervention_cost: float | None = Field(default=None, gt=0)
+    intervention_cost_column: str | None = None
+    max_customers: int | None = Field(default=None, ge=0)
+    min_customers: int = Field(default=0, ge=0)
+    customer_id_column: str | None = None
+    segment_column: str | None = None
+    segment_limits: dict[str, SegmentAllocationLimit] = Field(default_factory=dict)
 
 
 # ----------------------------
@@ -273,15 +391,12 @@ def encode_model_features(features: pd.DataFrame) -> pd.DataFrame:
 
 # ---------------------------
 # Basic endpoints
-# ---------------------------
-
-
 @app.get("/")
 def home():
     return {
         "message": "EconoCausal API is running",
         "docs": "/docs",
-        "model_file": MODEL_PATH.name,
+        "model_file": active_model_path().name,
     }
 
 
@@ -297,6 +412,7 @@ def health():
 @app.post("/api/dataset/upload")
 async def upload_dataset(file: UploadFile = File(...)):
     """Upload any CSV; report whether it has the expected Hillstrom columns."""
+
     if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a .csv file.")
 
@@ -311,6 +427,7 @@ async def upload_dataset(file: UploadFile = File(...)):
     try:
         df = pd.read_csv(BytesIO(content))
         df.columns = df.columns.astype(str).str.strip()
+
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Could not parse CSV: {exc}")
 
@@ -360,9 +477,28 @@ def list_datasets():
     return {"total": len(datasets), "datasets": datasets}
 
 
+@app.get("/api/dataset/inspect")
+def inspect_dataset(dataset_id: str = Query(...)):
+    """Inspect an uploaded CSV without imposing Hillstrom model requirements."""
+    path = dataset_path(dataset_id)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+    try:
+        return inspect_uploaded_dataset(
+            path,
+            dataset_id,
+            causal_required_columns=CAUSAL_REQUIRED_COLUMNS,
+            hillstrom_required_columns=HILLSTROM_COLUMNS,
+        )
+    except (UnicodeDecodeError, pd.errors.ParserError, ValueError) as exc:
+        raise HTTPException(
+            status_code=400, detail=f"Could not inspect uploaded CSV: {exc}"
+        ) from exc
+
+
 @app.get("/api/dataset/preview")
 def dataset_preview(dataset_id: Optional[str] = None):
-    dataset_id, df = load_dataset(dataset_id)
+    dataset_id, df = load_exploration_dataset(dataset_id)
     return {
         "dataset_id": dataset_id,
         "rows": len(df),
@@ -370,11 +506,42 @@ def dataset_preview(dataset_id: Optional[str] = None):
         "data": json_records(df.head(10)),
     }
 
+
+@app.get("/api/dataset/filter")
+def dataset_filter(
+    column: str,
+    values: list[str] = Query(..., min_length=1),
+    dataset_id: Optional[str] = None,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    """Filter any uploaded dataset by one or more exact categorical values."""
+    resolved_id, df = load_exploration_dataset(dataset_id)
+    if column not in df.columns:
+        raise HTTPException(status_code=422, detail=f"Unknown dataset column '{column}'.")
+    value_mask = df[column].astype(str).isin(
+        [value for value in values if value != "(Missing)"]
+    )
+    if "(Missing)" in values:
+        value_mask |= df[column].isna()
+    selected = df.loc[value_mask]
+    total = len(selected)
+    return {
+        "dataset_id": resolved_id,
+        "column": column,
+        "values": values,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "rows": json_records(selected.iloc[offset : offset + limit]),
+    }
+
+
 # -----------------------------------
 # csv file summary
 @app.get("/api/dataset/summary")
 def dataset_summary(dataset_id: Optional[str] = None):
-    dataset_id, df = load_dataset(dataset_id)
+    dataset_id, df = load_exploration_dataset(dataset_id)
 
     # get all details of the csv ----
     result = {
@@ -407,21 +574,36 @@ def dataset_summary(dataset_id: Optional[str] = None):
 
 @app.get("/api/dataset/columns")
 def dataset_columns(dataset_id: Optional[str] = None):
-    dataset_id, df = load_dataset(dataset_id)
+    dataset_id, df = load_exploration_dataset(dataset_id)
     stats = (
         df.describe(include="all")
         .astype(object)
         .where(pd.notna(df.describe(include="all")), None)
     )
+    # print({"dataset_id": dataset_id, "stats": jsonable_encoder(stats.to_dict())})
     return {"dataset_id": dataset_id, "stats": jsonable_encoder(stats.to_dict())}
+
+
+# -----------------------------
+# yet not implemented - frontend
 
 
 @app.get("/api/dataset/value-counts/{column}")
 def dataset_value_counts(column: str, dataset_id: Optional[str] = None):
-    dataset_id, df = load_dataset(dataset_id)
+    dataset_id, df = load_exploration_dataset(dataset_id)
     if column not in df.columns:
         raise HTTPException(status_code=400, detail=f"Column '{column}' not found.")
     counts = df[column].value_counts(dropna=False)
+    print(
+        {
+            "dataset_id": dataset_id,
+            "column": column,
+            "counts": {
+                str(key) if pd.notna(key) else "(Missing)": int(value)
+                for key, value in counts.items()
+            },
+        }
+    )
     return {
         "dataset_id": dataset_id,
         "column": column,
@@ -432,9 +614,11 @@ def dataset_value_counts(column: str, dataset_id: Optional[str] = None):
     }
 
 
+# ----------------------------
+# correlation matrix graph
 @app.get("/api/dataset/correlation")
 def dataset_correlation(dataset_id: Optional[str] = None):
-    dataset_id, df = load_dataset(dataset_id)
+    dataset_id, df = load_exploration_dataset(dataset_id)
     numeric = df.select_dtypes(include="number")
     corr = numeric.corr().round(3).astype(object)
     corr = corr.where(pd.notna(corr), None)
@@ -451,7 +635,7 @@ def dataset_distribution(
     dataset_id: Optional[str] = None,
     bins: int = Query(default=20, ge=1, le=100),
 ):
-    dataset_id, df = load_dataset(dataset_id)
+    dataset_id, df = load_exploration_dataset(dataset_id)
     if column not in df.columns:
         raise HTTPException(status_code=400, detail=f"Column '{column}' not found.")
 
@@ -469,6 +653,16 @@ def dataset_distribution(
         }
 
     counts = values.astype(str).value_counts()
+
+    # print(
+    #     {
+    #         "dataset_id": dataset_id,
+    #         "column": column,
+    #         "type": "categorical",
+    #         "labels": counts.index.tolist(),
+    #         "values": counts.astype(int).tolist(),
+    #     }
+    # )
     return {
         "dataset_id": dataset_id,
         "column": column,
@@ -477,7 +671,8 @@ def dataset_distribution(
         "values": counts.astype(int).tolist(),
     }
 
-
+# -----------------------------
+# scatter plot map
 @app.get("/api/dataset/scatter")
 def dataset_scatter(
     x: str = "history",
@@ -485,7 +680,7 @@ def dataset_scatter(
     dataset_id: Optional[str] = None,
     sample: int = Query(default=500, ge=1, le=5000),
 ):
-    dataset_id, df = load_dataset(dataset_id)
+    dataset_id, df = load_exploration_dataset(dataset_id)
     if x not in df.columns or y not in df.columns:
         raise HTTPException(
             status_code=400, detail="Requested x or y column not found."
@@ -579,7 +774,7 @@ def causal_dag():
 
 
 @app.get("/api/causal/identify")
-def identify_causal_effect(dataset_id: Optional[str] = None):
+def identify_causal_effect(dataset_id: str = Query(...)):
     """Use DoWhy to identify an average effect for Womens E-Mail vs No E-Mail."""
     try:
         from dowhy import CausalModel
@@ -636,6 +831,7 @@ def identify_causal_effect(dataset_id: Optional[str] = None):
             graph=graph,
         )
         estimand = model.identify_effect()
+        
         return {
             "dataset_id": resolved_id,
             "treatment": "Womens E-Mail vs No E-Mail",
@@ -655,7 +851,7 @@ def identify_causal_effect(dataset_id: Optional[str] = None):
 
 
 @app.post("/api/causal/train")
-def train_causal_model(dataset_id: Optional[str] = None):
+def train_causal_model(dataset_id: str = Query(...)):
     """Fit an EconML DML causal forest and evaluate uplift on held-out customers."""
     resolved_id, df = load_dataset(dataset_id)
     try:
@@ -675,54 +871,111 @@ def train_causal_model(dataset_id: Optional[str] = None):
     feature_columns = result.pop("_feature_columns")
 
     customers = result.pop("customers", [])
-    result["customers"] = customers[:10]
+    result["customers"] = customers
+    version_id = (
+        datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        + "_"
+        + uuid4().hex[:8]
+    )
+    model_path = MODEL_VERSIONS_DIR / f"causal_forest_{version_id}.joblib"
+    MODEL_VERSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
-    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-
+    model_metadata = {
+        "model_version": version_id,
+        "trained_at": datetime.now(timezone.utc).isoformat(),
+        "dataset_id": resolved_id,
+        "treatment_definition": result.get("treatment"),
+        "outcome": result.get("outcome"),
+        "feature_columns": feature_columns,
+        "feature_schema": {
+            column: str(df[column].dtype) for column in feature_columns
+        },
+        "model_type": result.get("estimator"),
+        "training_configuration": {
+            "test_size": 0.3,
+            "random_state": 42,
+            "cross_fitting_folds": 3,
+        },
+        "evaluation_metrics": {
+            "qini_coefficient": result.get("qini_coefficient"),
+            "holdout_customers": result.get("holdout_customers"),
+            "treatment_propensity": result.get("treatment_propensity"),
+        },
+    }
     joblib.dump(
         {
             "model": model,
             "preprocessor": preprocessor,
             "feature_columns": feature_columns,
-            "metadata": {
-                "dataset_id": resolved_id,
-                "treatment": result.get("treatment"),
-                "outcome": result.get("outcome"),
-            },
+            "metadata": model_metadata,
         },
-        MODEL_PATH,
+        model_path,
+    )
+    model_path.with_suffix(".json").write_text(
+        json.dumps(jsonable_encoder(model_metadata), allow_nan=False),
+        encoding="utf-8",
     )
 
     return {
         "dataset_id": resolved_id,
+        "model_id": model_path.stem,
+        "model_version": version_id,
         **result,
     }
 
 
 @app.get("/api/model/status")
 def model_status():
+    model_path = active_model_path()
     return {
-        "model_id": MODEL_PATH.stem,
-        "model_file": str(MODEL_PATH),
-        "exists": MODEL_PATH.is_file(),
+        "model_id": model_path.stem,
+        "model_file": str(model_path),
+        "exists": model_path.is_file(),
     }
+
+
+@app.get("/api/model/list")
+def list_models():
+    model_versions = []
+    for metadata_path in sorted(
+        MODEL_VERSIONS_DIR.glob("causal_forest_*.json"),
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    ):
+        model_path = metadata_path.with_suffix(".joblib")
+        model_versions.append(
+            {
+                "model_id": model_path.stem,
+                "model_file": model_path.name,
+                "exists": model_path.is_file(),
+                "metadata": json.loads(metadata_path.read_text(encoding="utf-8")),
+            }
+        )
+    if not model_versions and MODEL_PATH.is_file():
+        model_versions.append(
+            {
+                "model_id": MODEL_PATH.stem,
+                "model_file": MODEL_PATH.name,
+                "exists": True,
+                "metadata": None,
+            }
+        )
+    return {"total": len(model_versions), "models": model_versions}
 
 
 @app.get("/api/model/info")
 def model_info():
     model, features, preprocessor, metadata = load_model()
     return {
-        "model_id": MODEL_PATH.stem,
+        "model_id": active_model_path().stem,
         "model_class": type(model).__name__,
         "feature_columns": features,
         "has_preprocessor": preprocessor is not None,
-        "outcome": metadata.get(
-            "outcome", "conversion (expected; verify training metadata)"
-        ),
-        "treatment_definition": metadata.get(
-            "treatment_definition",
-            "Expected: Womens E-Mail (T=1) vs No E-Mail (T=0); verify training code.",
-        ),
+        "outcome": metadata.get("outcome"),
+        "treatment_definition": metadata.get("treatment_definition"),
+        "dataset_id": metadata.get("dataset_id"),
+        "model_version": metadata.get("model_version"),
+        "trained_at": metadata.get("trained_at"),
         "metadata_available": bool(metadata),
     }
 
@@ -732,6 +985,7 @@ def model_ite(dataset_id: Optional[str] = None):
     """Estimate ITEs for uploaded data using the saved model."""
     resolved_id, df = load_dataset(dataset_id)
     model, features, preprocessor, metadata = load_model()
+    validate_model_dataset(resolved_id, features, metadata, df)
 
     missing = [col for col in features if col not in df.columns]
     if missing:
@@ -774,7 +1028,7 @@ def model_ite(dataset_id: Optional[str] = None):
     results["effect_percentage_points"] = results["ite"] * 100
 
     return {
-        "model_id": MODEL_PATH.stem,
+        "model_id": active_model_path().stem,
         "dataset_id": resolved_id,
         "treatment": "Womens E-Mail (T=1) vs No E-Mail (T=0)",
         "outcome": "conversion",
@@ -803,6 +1057,7 @@ def uplift_data(dataset_id: Optional[str] = None):
         raise HTTPException(status_code=400, detail={"missing_columns": missing})
 
     model, features, preprocessor, metadata = load_model()
+    validate_model_dataset(resolved_id, features, metadata, df)
     missing_features = [col for col in features if col not in df.columns]
     if missing_features:
         raise HTTPException(
@@ -845,3 +1100,259 @@ def uplift_data(dataset_id: Optional[str] = None):
             "method. Do not evaluate causal uplift on the same data used to fit the model."
         ),
     }
+
+
+@app.post("/api/allocation/optimize")
+def optimize_budget_allocation(request: AllocationRequest):
+    """Optimize binary email-intervention assignment under the requested budget."""
+    if (request.intervention_cost is None) == (
+        request.intervention_cost_column is None
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Provide exactly one of intervention_cost or "
+                "intervention_cost_column."
+            ),
+        )
+
+    resolved_id, df = load_dataset(request.dataset_id)
+    model, features, preprocessor, metadata = load_model()
+    validate_model_dataset(resolved_id, features, metadata, df)
+    missing_features = [column for column in features if column not in df.columns]
+    if missing_features:
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Dataset is missing model features.", "missing_features": missing_features},
+        )
+    if request.customer_id_column and request.customer_id_column not in df.columns:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown customer ID column '{request.customer_id_column}'.",
+        )
+    if request.customer_id_column and (
+        df[request.customer_id_column].isna().any()
+        or df[request.customer_id_column].duplicated().any()
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Customer ID values must be non-empty and unique.",
+        )
+    if request.segment_column and request.segment_column not in df.columns:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown segment column '{request.segment_column}'.",
+        )
+    if (
+        request.intervention_cost_column
+        and request.intervention_cost_column not in df.columns
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown intervention cost column '{request.intervention_cost_column}'.",
+        )
+
+    selected = prepare_hillstrom_comparison(df)
+    scoring_features = selected[features]
+    try:
+        transformed = (
+            preprocessor.transform(scoring_features)
+            if preprocessor is not None
+            else scoring_features
+        )
+        effects = np.asarray(model.effect(transformed, T0=0, T1=1), dtype=float).reshape(-1)
+        if len(effects) != len(selected) or not np.isfinite(effects).all():
+            raise ValueError("The model returned invalid treatment-effect estimates.")
+    except Exception as exc:
+        logger.exception("Could not score customers for allocation")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Could not score customers for allocation: {exc}",
+        ) from exc
+
+    if request.intervention_cost_column:
+        costs = pd.to_numeric(
+            selected[request.intervention_cost_column], errors="coerce"
+        ).to_numpy(dtype=float)
+    else:
+        costs = np.full(len(selected), request.intervention_cost, dtype=float)
+
+    customer_ids = (
+        selected[request.customer_id_column].astype(str).to_numpy()
+        if request.customer_id_column
+        else selected.index.astype(str).to_numpy()
+    )
+    customers = pd.DataFrame(
+        {
+            "customer_id": customer_ids,
+            "ite": effects,
+        }
+    )
+    if request.segment_column:
+        customers["segment"] = selected[request.segment_column].fillna(
+            "(missing)"
+        ).astype(str).to_numpy()
+    try:
+        optimized = optimize_allocation(
+            customers,
+            request.budget,
+            costs,
+            max_customers=request.max_customers,
+            min_customers=request.min_customers,
+            segment_column="segment" if request.segment_column else None,
+            segment_limits={
+                segment: limit.model_dump()
+                for segment, limit in request.segment_limits.items()
+            },
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("SciPy customer-allocation optimization failed")
+        raise HTTPException(
+            status_code=503, detail=f"Customer-allocation solver failed: {exc}"
+        ) from exc
+
+    result_rows = optimized["customers"].rename(
+        columns={"ite": "predicted_ite"}
+    ).sort_values("predicted_ite", ascending=False, kind="stable")
+    allocation_id = str(uuid4())
+    csv_path = ALLOCATION_DIR / f"{allocation_id}.csv"
+    metadata_path = ALLOCATION_DIR / f"{allocation_id}.json"
+    result_rows.to_csv(csv_path, index=False)
+    segment_summaries = []
+    if "segment" in result_rows:
+        for segment, group in result_rows.groupby("segment", dropna=False):
+            segment_summaries.append(
+                {
+                    "segment": str(segment),
+                    "customers_evaluated": int(len(group)),
+                    "customers_selected": int(group["selected"].sum()),
+                    "allocated_budget": float(group.loc[group["selected"], "intervention_cost"].sum()),
+                    "expected_incremental_conversions": float(
+                        group.loc[group["selected"], "expected_incremental_benefit"].sum()
+                    ),
+                }
+            )
+    summary = {
+        **optimized["summary"],
+        "intervention_cost_model": (
+            "dataset column"
+            if request.intervention_cost_column
+            else "fixed per-customer cost"
+        ),
+        "segment_summaries": segment_summaries,
+    }
+    metadata_payload = {
+        "allocation_id": allocation_id,
+        "dataset_id": resolved_id,
+        "model_id": active_model_path().stem,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "summary": summary,
+        "total_customers": int(len(result_rows)),
+    }
+    metadata_path.write_text(
+        json.dumps(jsonable_encoder(metadata_payload), allow_nan=False),
+        encoding="utf-8",
+    )
+    return {
+        **metadata_payload,
+        "offset": 0,
+        "limit": min(100, len(result_rows)),
+        "customers": json_records(result_rows.head(100)),
+        "objective_label": "Expected incremental conversions, not profit.",
+        "warning": (
+            "Treatment effects are estimates for Womens E-Mail versus No E-Mail. "
+            "Intervention costs do not imply discount or revenue effects."
+        ),
+    }
+
+
+@app.get("/api/allocation/{allocation_id}")
+def get_allocation_result(
+    allocation_id: str,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
+    selected_only: bool = False,
+    query: str | None = None,
+    segment: str | None = None,
+    sort_by: str = "predicted_ite",
+    sort_direction: str = "desc",
+):
+    try:
+        canonical_id = str(UUID(allocation_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid allocation ID.") from exc
+    csv_path = ALLOCATION_DIR / f"{canonical_id}.csv"
+    metadata_path = ALLOCATION_DIR / f"{canonical_id}.json"
+    if not csv_path.is_file() or not metadata_path.is_file():
+        raise HTTPException(status_code=404, detail="Allocation result not found.")
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    rows = pd.read_csv(csv_path)
+    if selected_only:
+        rows = rows.loc[rows["selected"].astype(bool)]
+    if segment:
+        if "segment" not in rows:
+            raise HTTPException(
+                status_code=422, detail="This allocation has no segment information."
+            )
+        rows = rows.loc[rows["segment"].astype(str).eq(segment)]
+    if query:
+        rows = rows.loc[
+            rows["customer_id"].astype(str).str.contains(query, case=False, regex=False)
+        ]
+    sortable_columns = {
+        "customer_id",
+        "segment",
+        "predicted_ite",
+        "expected_incremental_benefit",
+        "intervention_cost",
+        "selected",
+    }
+    if sort_by not in sortable_columns or sort_by not in rows:
+        raise HTTPException(status_code=422, detail="Invalid allocation sort column.")
+    if sort_direction not in {"asc", "desc"}:
+        raise HTTPException(status_code=422, detail="Sort direction must be asc or desc.")
+    rows = rows.sort_values(
+        sort_by, ascending=sort_direction == "asc", kind="stable"
+    )
+    total = len(rows)
+    page = rows.iloc[offset : offset + limit]
+    return {
+        **metadata,
+        "offset": offset,
+        "limit": limit,
+        "total_customers": total,
+        "customers": json_records(page),
+    }
+
+
+@app.get("/api/allocation/{allocation_id}/export")
+def export_allocation_csv(allocation_id: str):
+    try:
+        canonical_id = str(UUID(allocation_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid allocation ID.") from exc
+    csv_path = ALLOCATION_DIR / f"{canonical_id}.csv"
+    if not csv_path.is_file():
+        raise HTTPException(status_code=404, detail="Allocation result not found.")
+    return FileResponse(
+        csv_path,
+        media_type="text/csv",
+        filename=f"econocausal-allocation-{canonical_id}.csv",
+    )
+
+
+@app.post("/api/archive-campaign/train")
+def train_archive_campaign():
+    """Train and audit a household-level model on the local campaign archive."""
+    try:
+        result = train_archive_campaign_model()
+        return {
+            "report": result["report"],
+            "scores_total": len(result["scores"]),
+        }
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

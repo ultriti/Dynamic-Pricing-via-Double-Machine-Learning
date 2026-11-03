@@ -5,12 +5,43 @@ const api = axios.create({
   timeout: 180000,
 });
 
+export const optimizeCustomerAllocation = async (configuration) =>
+(await api.post("/api/allocation/optimize", configuration)).data;
+
+export const fetchAllocationResult = async (allocationId, options = {}) =>
+(
+  await api.get(`/api/allocation/${encodeURIComponent(allocationId)}`, {
+    params: options,
+  })
+).data;
+
+export const downloadAllocationCsv = async (allocationId) =>
+(
+  await api.get(
+    `/api/allocation/${encodeURIComponent(allocationId)}/export`,
+    { responseType: "blob" },
+  )
+).data;
+
 const ACTIVE_DATASET_KEY = "econocausal:activeDatasetId";
+
+export const getActiveDatasetId = () =>
+  window.localStorage.getItem(ACTIVE_DATASET_KEY);
+
+export const setActiveDatasetId = (datasetId) => {
+  if (datasetId) {
+    window.localStorage.setItem(ACTIVE_DATASET_KEY, datasetId);
+  } else {
+    window.localStorage.removeItem(ACTIVE_DATASET_KEY);
+  }
+  window.dispatchEvent(new Event("econocausal:activeDatasetChanged"));
+};
 
 api.interceptors.request.use((config) => {
   const datasetScoped =
     (config.method === "get" &&
-      (config.url?.startsWith("/api/dataset/") ||
+      ((config.url?.startsWith("/api/dataset/") &&
+        config.url !== "/api/dataset/list") ||
         config.url === "/api/causal/identify" ||
         config.url === "/api/model/ite" ||
         config.url === "/api/model/uplift-data")) ||
@@ -27,9 +58,15 @@ export const getApiErrorMessage = (error) => {
   const detail = error.response?.data?.detail;
   if (typeof detail === "string") return detail;
   if (detail?.message) {
-    const missing = detail.missing_columns?.join(", ");
+    const missing = (
+      detail.missing_columns ??
+      detail.missing_features ??
+      detail.missing
+    )?.join(", ");
     return missing ? `${detail.message} Missing: ${missing}.` : detail.message;
   }
+  const missing = detail?.missing_columns ?? detail?.missing_features;
+  if (missing?.length) return `Missing required columns: ${missing.join(", ")}.`;
   return error.message || "The request could not be completed.";
 };
 
@@ -39,18 +76,31 @@ export const uploadDataset = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
   const { data } = await api.post("/api/dataset/upload", formData);
-  window.localStorage.setItem(ACTIVE_DATASET_KEY, data.dataset_id);
+  setActiveDatasetId(data.dataset_id);
   return data;
 };
+
+export const fetchDatasetList = async () =>
+  (await api.get("/api/dataset/list")).data;
 
 export const fetchCausalDag = async () =>
   (await api.get("/api/causal/dag")).data;
 
-export const identifyCausalEffect = async () =>
-  (await api.get("/api/causal/identify")).data;
+export const identifyCausalEffect = async (datasetId) =>
+  (await api.get("/api/causal/identify", { params: { dataset_id: datasetId } }))
+    .data;
 
-export const trainCausalModel = async () =>
-  (await api.post("/api/causal/train")).data;
+export const trainCausalModel = async (datasetId) =>
+  (await api.post("/api/causal/train", null, {
+    params: { dataset_id: datasetId },
+  })).data;
+
+export const fetchDatasetDetails = async (datasetId) =>
+  (
+    await api.get("/api/dataset/inspect", {
+      params: { dataset_id: datasetId },
+    })
+  ).data;
 
 export const fetchDatasetPreview = async () =>
   (await api.get("/api/dataset/preview")).data;
@@ -84,5 +134,32 @@ export const fetchScatterPlot = async (x, y, sample = 500) =>
 export const fetchModelStatus = async () =>
   (await api.get("/api/model/status")).data;
 
+export const fetchModelList = async () =>
+  (await api.get("/api/model/list")).data;
+
+export const fetchModelInfo = async () =>
+  (await api.get("/api/model/info")).data;
+
 export const fetchModelPredictions = async () =>
   (await api.get("/api/model/ite")).data;
+
+export const fetchUpliftData = async () =>
+  (await api.get("/api/model/uplift-data")).data;
+
+export const trainArchiveCampaignModel = async () =>
+  (await api.post("/api/archive-campaign/train")).data;
+
+export const fetchArchiveCampaignReport = async () =>
+  (await api.get("/api/archive-campaign/report")).data;
+
+export const fetchArchiveCampaignScores = async ({
+  offset = 0,
+  limit = 50,
+  minimumEffect,
+  query,
+} = {}) =>
+  (
+    await api.get("/api/archive-campaign/scores", {
+      params: { offset, limit, minimum_effect: minimumEffect, query },
+    })
+  ).data;

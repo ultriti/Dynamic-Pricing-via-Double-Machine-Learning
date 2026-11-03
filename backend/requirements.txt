@@ -8,7 +8,7 @@ econml
 dowhy>=0.13,<0.15
 
 # Optimization
-scipy
+scipy>=1.9
 
 # Model saving and loading
 joblib

@@ -785,6 +785,88 @@
   opacity: 0.55;
 }
 
+.allocation-config,
+.allocation-table-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.allocation-config label,
+.allocation-table-controls > label:not(.allocation-selected-filter) {
+  display: grid;
+  min-width: 170px;
+  gap: 5px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.allocation-config input,
+.allocation-table-controls input:not([type="checkbox"]),
+.allocation-table-controls select {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-1);
+}
+
+.allocation-config .button {
+  min-height: 36px;
+}
+
+.allocation-config .button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.allocation-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 18px 0 8px;
+}
+
+.allocation-summary > div {
+  display: grid;
+  gap: 6px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-1);
+}
+
+.allocation-summary span {
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.allocation-summary strong {
+  color: var(--text-0);
+  font-size: 16px;
+}
+
+.allocation-selected-filter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.allocation-section .data-table th button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 @media (max-width: 960px) {
   .app-layout {
     grid-template-columns: 200px minmax(0, 1fr);
@@ -892,5 +974,11 @@
   .causal-filters,
   .causal-filters input {
     width: 100%;
+  }
+
+  .allocation-config,
+  .allocation-table-controls {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

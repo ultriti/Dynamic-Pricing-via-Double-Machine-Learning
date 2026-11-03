@@ -76,10 +76,30 @@ def test_inspection_api_uses_requested_dataset_and_causal_training_requires_id(
     response = client.get(
         "/api/dataset/inspect", params={"dataset_id": "selected-dataset"}
     )
+    preview_response = client.get(
+        "/api/dataset/preview", params={"dataset_id": "selected-dataset"}
+    )
+    summary_response = client.get(
+        "/api/dataset/summary", params={"dataset_id": "selected-dataset"}
+    )
+    filter_response = client.get(
+        "/api/dataset/filter",
+        params={
+            "dataset_id": "selected-dataset",
+            "column": "customer_id",
+            "values": ["selected-row"],
+        },
+    )
     missing_id_response = client.post("/api/causal/train")
 
     assert response.status_code == 200
+    assert preview_response.status_code == 200
+    assert summary_response.status_code == 200
+    assert filter_response.status_code == 200
     assert response.json()["dataset_id"] == "selected-dataset"
     assert response.json()["preview"][0]["customer_id"] == "selected-row"
+    assert preview_response.json()["data"][0]["customer_id"] == "selected-row"
+    assert summary_response.json()["rows"] == 1
+    assert filter_response.json()["rows"][0]["customer_id"] == "selected-row"
     assert response.json()["causal_compatibility"]["compatible"] is False
     assert missing_id_response.status_code == 422

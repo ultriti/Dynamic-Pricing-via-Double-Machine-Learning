@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { GitBranch, Play, Target, TrendingUp, Users } from "lucide-react";
 import CausalDag from "../components/CausalDag";
 import CausalEvaluationCharts from "../components/CausalEvaluationCharts";
+import AllocationResults from "../components/AllocationResults";
 import { ErrorMessage, LoadingSpinner } from "../components/Feedback";
 import StatCard from "../components/StatCard";
 import {
@@ -317,6 +318,11 @@ function CausalLab({ datasetId }) {
           </p>
 
           <CausalEvaluationCharts result={result} />
+
+          <AllocationResults
+            key={`${datasetId}-${result.model_version ?? result.model_id ?? "trained"}`}
+            datasetId={datasetId}
+          />
 
           <section className="panel causal-section">
             <div className="panel-heading">

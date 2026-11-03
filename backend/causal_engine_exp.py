@@ -91,6 +91,10 @@ def _uplift_evaluation(
         "outperforms_random": strategy_area > random_area,
         "holdout_customers": int(len(outcome)),
         "treatment_propensity": propensity,
+        "treatment_propensity_method": (
+            "Empirical treatment fraction; appropriate for the randomized "
+            "Hillstrom assignment, not a propensity model for observational data."
+        ),
     }
 
 
@@ -235,6 +239,7 @@ def train_dml_analysis(
         "customers_scored": int(len(population_effects)),
         "customer_rows_returned": int(len(customers)),
         "mean_ite": float(population_effects.mean()),
+        "ate": float(population_effects.mean()),
         "positive_effect_count": int((population_effects > 0).sum()),
         "negative_effect_count": int((population_effects < 0).sum()),
         "customers": customers,
@@ -244,6 +249,8 @@ def train_dml_analysis(
             "cohort; held-out Qini and uplift metrics use a separate untouched split. "
             "ITE estimates are not known individual counterfactuals. Causal interpretation "
             "depends on the DAG and treatment-assignment assumptions. This "
-            "Hillstrom analysis compares email assignment, not discount amounts."
+            "Hillstrom analysis compares email assignment, not discount amounts. "
+            "The average of conditional treatment-effect predictions is the reported "
+            "population ATE estimate."
         ),
     }

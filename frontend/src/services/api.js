@@ -5,6 +5,24 @@ const api = axios.create({
   timeout: 180000,
 });
 
+export const optimizeCustomerAllocation = async (configuration) =>
+(await api.post("/api/allocation/optimize", configuration)).data;
+
+export const fetchAllocationResult = async (allocationId, options = {}) =>
+(
+  await api.get(`/api/allocation/${encodeURIComponent(allocationId)}`, {
+    params: options,
+  })
+).data;
+
+export const downloadAllocationCsv = async (allocationId) =>
+(
+  await api.get(
+    `/api/allocation/${encodeURIComponent(allocationId)}/export`,
+    { responseType: "blob" },
+  )
+).data;
+
 const ACTIVE_DATASET_KEY = "econocausal:activeDatasetId";
 
 export const getActiveDatasetId = () =>
@@ -115,6 +133,9 @@ export const fetchScatterPlot = async (x, y, sample = 500) =>
 
 export const fetchModelStatus = async () =>
   (await api.get("/api/model/status")).data;
+
+export const fetchModelList = async () =>
+  (await api.get("/api/model/list")).data;
 
 export const fetchModelInfo = async () =>
   (await api.get("/api/model/info")).data;

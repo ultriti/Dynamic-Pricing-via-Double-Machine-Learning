@@ -166,6 +166,7 @@ def main():
         results["actual_quantity"] - results["predicted_quantity"]
 )
     results["absolute_error"] = results["prediction_error"].abs()
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     results.to_csv(OUTPUT_PATH, index=False)
 

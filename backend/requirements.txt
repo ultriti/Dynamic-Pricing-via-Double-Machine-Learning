@@ -5,7 +5,7 @@ pandas
 # Machine Learning
 scikit-learn
 econml
-dowhy>=0.13,<0.15
+dowhy>=0.14,<0.15
 
 # Optimization
 scipy>=1.9

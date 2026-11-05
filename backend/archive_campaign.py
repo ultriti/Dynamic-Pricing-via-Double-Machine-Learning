@@ -395,7 +395,9 @@ def _dowhy_audit(
     treatment: np.ndarray,
     outcome: np.ndarray,
 ) -> dict[str, Any]:
-    from dowhy import CausalModel
+    from dowhy_compat import load_causal_model
+
+    CausalModel = load_causal_model()
 
     standardized_features = StandardScaler().fit_transform(feature_matrix)
     _, triangular, pivots = qr(standardized_features, mode="economic", pivoting=True)

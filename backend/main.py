@@ -26,6 +26,7 @@ from archive_campaign import (
     train_archive_campaign_model,
 )
 from budget_optimization import optimize_allocation
+from dowhy_compat import load_causal_model
 
 # ---------------------------
 # Paths and application setup
@@ -777,7 +778,7 @@ def causal_dag():
 def identify_causal_effect(dataset_id: str = Query(...)):
     """Use DoWhy to identify an average effect for Womens E-Mail vs No E-Mail."""
     try:
-        from dowhy import CausalModel
+        CausalModel = load_causal_model()
     except ImportError:
         raise HTTPException(
             status_code=503,
@@ -836,7 +837,12 @@ def identify_causal_effect(dataset_id: str = Query(...)):
             "dataset_id": resolved_id,
             "treatment": "Womens E-Mail vs No E-Mail",
             "outcome": "conversion",
-            "identified_estimand": str(estimand),
+            "identified_estimand": (
+                "E[conversion | email_treatment=1, X] - "
+                "E[conversion | email_treatment=0, X]"
+            ),
+            "adjustment_set": DEFAULT_FEATURE_COLUMNS,
+            "estimand_method": "Backdoor adjustment",
             "warning": "Identification depends on the supplied DAG and measured-confounder assumptions.",
         }
     except Exception as exc:
@@ -852,7 +858,7 @@ def identify_causal_effect(dataset_id: str = Query(...)):
 
 @app.post("/api/causal/train")
 def train_causal_model(dataset_id: str = Query(...)):
-    """Fit an EconML DML causal forest and evaluate uplift on held-out customers."""
+    """Fit an EconML DML forest and evaluate uplift with out-of-fold predictions."""
     resolved_id, df = load_dataset(dataset_id)
     try:
         result = train_dml_analysis(df, DEFAULT_FEATURE_COLUMNS)
@@ -863,7 +869,7 @@ def train_causal_model(dataset_id: str = Query(...)):
     except Exception as exc:
         raise HTTPException(
             status_code=422,
-            detail=f"DML training or held-out evaluation failed: {exc}",
+            detail=f"DML training or out-of-fold evaluation failed: {exc}",
         ) from exc
 
     model = result.pop("_model")
@@ -892,13 +898,14 @@ def train_causal_model(dataset_id: str = Query(...)):
         },
         "model_type": result.get("estimator"),
         "training_configuration": {
-            "test_size": 0.3,
             "random_state": 42,
             "cross_fitting_folds": 3,
+            "evaluation_folds": result.get("evaluation_folds"),
+            "qini_bootstrap_samples": result.get("qini_bootstrap_samples"),
         },
         "evaluation_metrics": {
             "qini_coefficient": result.get("qini_coefficient"),
-            "holdout_customers": result.get("holdout_customers"),
+            "evaluation_customers": result.get("evaluation_customers"),
             "treatment_propensity": result.get("treatment_propensity"),
         },
     }

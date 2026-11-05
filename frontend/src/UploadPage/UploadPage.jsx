@@ -153,7 +153,7 @@ const UploadPage = () => {
       <section className="campaign-budget">
         <div>
           <label htmlFor="campaign-budget">Campaign budget (USD)</label>
-          <p>Saved for the Week 3 allocation workflow; no discounts are allocated in this phase.</p>
+          <p>Saved for your allocation planning; no discounts are allocated in this phase.</p>
         </div>
         <div className="budget-input-wrap">
           <span aria-hidden="true">$</span>

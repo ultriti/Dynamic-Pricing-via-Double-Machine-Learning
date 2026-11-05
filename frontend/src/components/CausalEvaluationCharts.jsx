@@ -1,10 +1,11 @@
 import Plotly from "plotly.js/lib/core";
 import createPlotlyComponent from "react-plotly.js/factory";
 import bar from "plotly.js/lib/bar";
+import histogram from "plotly.js/lib/histogram";
 import scatter from "plotly.js/lib/scatter";
 import ChartCard from "./ChartCard";
 
-Plotly.register([bar, scatter]);
+Plotly.register([bar, histogram, scatter]);
 const Plot = createPlotlyComponent(Plotly);
 
 const sharedLayout = {
@@ -19,15 +20,40 @@ const sharedLayout = {
 function CausalEvaluationCharts({ result }) {
   const curve = result.qini_curve ?? [];
   const deciles = result.uplift_by_decile ?? [];
+  const distribution = result.ite_distribution;
+  const histogramCenters =
+    distribution?.bin_edges.slice(0, -1).map((edge, index) =>
+      ((edge + distribution.bin_edges[index + 1]) / 2) * 100,
+    ) ?? [];
 
   return (
     <div className="causal-charts">
       <ChartCard
-        title="Held-out Qini curve"
-        subtitle="Cumulative incremental conversions versus a random rollout"
+        title="Out-of-fold Qini curve"
+        subtitle="Out-of-sample cumulative lift versus random rollout; shaded 90% stratified-bootstrap band"
       >
         <Plot
           data={[
+            {
+              x: curve.map((point) => point.population_fraction),
+              y: curve.map((point) => point.strategy_gain_lower),
+              type: "scatter",
+              mode: "lines",
+              line: { color: "rgba(79,70,229,0)", width: 0 },
+              hoverinfo: "skip",
+              showlegend: false,
+            },
+            {
+              x: curve.map((point) => point.population_fraction),
+              y: curve.map((point) => point.strategy_gain_upper),
+              type: "scatter",
+              mode: "lines",
+              line: { color: "rgba(79,70,229,0)", width: 0 },
+              fill: "tonexty",
+              fillcolor: "rgba(79,70,229,0.14)",
+              name: "90% bootstrap band",
+              hoverinfo: "skip",
+            },
             {
               x: curve.map((point) => point.population_fraction),
               y: curve.map((point) => point.strategy_gain),
@@ -56,8 +82,39 @@ function CausalEvaluationCharts({ result }) {
         />
       </ChartCard>
       <ChartCard
+        title="Distribution of customer ITEs"
+        subtitle={
+          distribution
+            ? `90% interval shown in the table · 5th–95th percentile: ${(distribution.p05 * 100).toFixed(2)} to ${(distribution.p95 * 100).toFixed(2)} pp · extremes: ${(distribution.minimum * 100).toFixed(2)} to ${(distribution.maximum * 100).toFixed(2)} pp`
+            : "Final-model customer-level effect estimates"
+        }
+      >
+        {distribution && (
+          <Plot
+            data={[
+              {
+                x: histogramCenters,
+                y: distribution.counts,
+                type: "bar",
+                marker: { color: "#6366f1" },
+                hovertemplate: "%{x:.2f} pp<br>%{y} customers<extra></extra>",
+              },
+            ]}
+            layout={{
+              ...sharedLayout,
+              bargap: 0.05,
+              xaxis: { title: "Estimated incremental conversion effect (pp)" },
+              yaxis: { title: "Customers", rangemode: "tozero" },
+            }}
+            config={{ responsive: true, displaylogo: false }}
+            useResizeHandler
+            style={{ width: "100%", height: "340px" }}
+          />
+        )}
+      </ChartCard>
+      <ChartCard
         title="Observed uplift by predicted-effect decile"
-        subtitle="Held-out conversion rates for treatment and control customers"
+        subtitle="Out-of-fold conversion rates by predicted-effect decile"
       >
         <Plot
           data={[

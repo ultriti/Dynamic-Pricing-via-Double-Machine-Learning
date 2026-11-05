@@ -156,7 +156,7 @@ export default function AllocationResults({ datasetId }) {
     <section className="panel causal-section allocation-section">
       <div className="panel-heading">
         <div>
-          <h2>Week 3 · Personalized allocation</h2>
+          <h2>Personalized allocation</h2>
           <p>
             Select email interventions that maximize estimated incremental
             conversions within the configured budget.

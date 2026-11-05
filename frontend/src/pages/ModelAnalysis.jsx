@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { GitBranch, Play, Target, TrendingUp, Users } from "lucide-react";
 import CausalDag from "../components/CausalDag";
 import CausalEvaluationCharts from "../components/CausalEvaluationCharts";
-import AllocationResults from "../components/AllocationResults";
 import { ErrorMessage, LoadingSpinner } from "../components/Feedback";
 import StatCard from "../components/StatCard";
 import {
@@ -137,11 +136,15 @@ function CausalLab({ datasetId }) {
     <div className="page causal-page">
       <div className="page-heading">
         <div>
-          <h1>Causal Lab</h1>
-          <p>Weeks 1–2 · Define the causal graph, train Double ML, and evaluate held-out uplift.</p>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            CAMPAIGN ANALYTICS
+          </div>
+          <h1>Campaign uplift</h1>
+          <p>Identify the causal effect, train Double ML, and evaluate out-of-fold uplift.</p>
         </div>
         <Link className="button button-secondary" to="/upload">
-          Upload campaign data
+          Data workspace
         </Link>
       </div>
 
@@ -223,7 +226,7 @@ function CausalLab({ datasetId }) {
       <section className="panel causal-section">
         <div className="panel-heading">
           <div>
-            <h2><GitBranch size={18} aria-hidden="true" /> Week 1 · Causal graph</h2>
+            <h2><GitBranch size={18} aria-hidden="true" /> Causal graph</h2>
             <p>Confounders affect both campaign assignment and conversion; post-treatment visits are excluded.</p>
           </div>
         </div>
@@ -251,8 +254,9 @@ function CausalLab({ datasetId }) {
               </button>
               {identification && (
                 <div className="estimand-result">
-                  <strong>DoWhy identified estimand</strong>
+                  <strong>{identification.estimand_method} estimand</strong>
                   <pre>{identification.identified_estimand}</pre>
+                  <small>Adjustment set: {identification.adjustment_set.join(", ")}</small>
                   <small>{identification.warning}</small>
                 </div>
               )}
@@ -264,8 +268,8 @@ function CausalLab({ datasetId }) {
       <section className="panel causal-section">
         <div className="panel-heading">
           <div>
-            <h2><TrendingUp size={18} aria-hidden="true" /> Week 2 · Double Machine Learning</h2>
-            <p>Cross-fitted EconML CausalForestDML with random-forest nuisance models and a held-out evaluation split.</p>
+            <h2><TrendingUp size={18} aria-hidden="true" /> Double machine learning</h2>
+            <p>Cross-fitted EconML CausalForestDML with random-forest nuisance models and outer-fold out-of-sample evaluation.</p>
           </div>
           <button
             className="button button-primary"
@@ -280,7 +284,7 @@ function CausalLab({ datasetId }) {
         <p className="causal-note">
           Training uses dataset {datasetDetails.dataset_id}. For Hillstrom-compatible data, treatment is Womens E-Mail versus No E-Mail and outcome is conversion; the data does not estimate dollar-discount effects.
         </p>
-        {training && <LoadingSpinner label="Fitting cross-fitted causal forest and scoring held-out customers…" />}
+        {training && <LoadingSpinner label="Fitting cross-fitted causal forest and generating out-of-fold evaluation…" />}
         {error && <ErrorMessage message={error} />}
       </section>
 
@@ -308,7 +312,7 @@ function CausalLab({ datasetId }) {
             <StatCard
               label="Compared with random"
               value={result.outperforms_random ? "Above baseline" : "Not above baseline"}
-              note="Held-out Qini area comparison"
+              note="Out-of-fold Qini area comparison"
               icon={Target}
             />
           </div>
@@ -316,20 +320,130 @@ function CausalLab({ datasetId }) {
           <p className="causal-note">
             {result.estimator} · {result.base_estimators} · {result.treatment}. {result.warning}
           </p>
+          <div className="model-info">
+            <div><strong>Run ID</strong><span>{result.model_id}</span></div>
+            <div><strong>Treatment definition</strong><span>{result.treatment}</span></div>
+            <div><strong>Evaluation</strong><span>{result.evaluation_method}</span></div>
+          </div>
 
           <CausalEvaluationCharts result={result} />
 
-          <AllocationResults
-            key={`${datasetId}-${result.model_version ?? result.model_id ?? "trained"}`}
-            datasetId={datasetId}
-          />
+          <section className="panel causal-section">
+            <div className="panel-heading">
+              <div>
+                <h2>Randomized-trial benchmark</h2>
+                <p>Hillstrom randomized assignment provides an independent raw difference-in-means benchmark.</p>
+              </div>
+            </div>
+            <div className="archive-review-stats">
+              <div>
+                <strong>DML mean ITE</strong>
+                <span>{(result.ate * 100).toFixed(2)} pp</span>
+              </div>
+              <div>
+                <strong>RCT difference in means</strong>
+                <span>{(result.rct_benchmark.raw_difference * 100).toFixed(2)} pp</span>
+              </div>
+              <div>
+                <strong>RCT 90% confidence interval</strong>
+                <span>
+                  {(result.rct_benchmark.ci_90_lower * 100).toFixed(2)} to{" "}
+                  {(result.rct_benchmark.ci_90_upper * 100).toFixed(2)} pp
+                </span>
+              </div>
+              <div>
+                <strong>RCT groups</strong>
+                <span>
+                  {(result.rct_benchmark.mean_conversion_treated * 100).toFixed(2)}% treated ·{" "}
+                  {(result.rct_benchmark.mean_conversion_control * 100).toFixed(2)}% control
+                </span>
+              </div>
+            </div>
+            <p className="causal-note">{result.rct_benchmark.design}. The DML estimate and raw randomized contrast are complementary checks, not expected to match exactly.</p>
+          </section>
+
+          <section className="panel causal-section">
+            <div className="panel-heading">
+              <div>
+                <h2>Causal audit · DoWhy refutations</h2>
+                <p>Robustness checks at α = {result.causal_audit.alpha}; passing does not prove that hidden confounding is absent.</p>
+              </div>
+            </div>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr><th>Refuter</th><th>P-value</th><th>Result</th><th>Refuted effect</th></tr>
+                </thead>
+                <tbody>
+                  {result.causal_audit.refutations.map((refutation) => (
+                    <tr key={refutation.method}>
+                      <td>{refutation.method.replaceAll("_", " ")}</td>
+                      <td>{refutation.p_value == null ? "—" : refutation.p_value.toFixed(3)}</td>
+                      <td>
+                        <span className={`audit-badge audit-${refutation.status}`}>
+                          {refutation.status}
+                        </span>
+                        {refutation.message && <small className="audit-error">{refutation.message}</small>}
+                      </td>
+                      <td>{refutation.refuted_effect == null ? "—" : `${(refutation.refuted_effect * 100).toFixed(3)} pp`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="causal-note">{result.causal_audit.interpretation}</p>
+          </section>
+
+          <section className="panel causal-section">
+            <div className="panel-heading">
+              <div>
+                <h2>Propensity and covariate balance</h2>
+                <p>Standardized mean differences before matching, comparing randomized treatment groups.</p>
+              </div>
+            </div>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr><th>Covariate</th><th>Largest level difference</th><th>SMD</th><th>Balance check</th></tr>
+                </thead>
+                <tbody>
+                  {result.covariate_balance.map((item) => (
+                    <tr key={item.covariate}>
+                      <td>{item.covariate}</td>
+                      <td>{item.largest_level.replace(/^.*__/, "")}</td>
+                      <td>{item.smd.toFixed(3)} (|SMD| {item.absolute_smd.toFixed(3)})</td>
+                      <td>{item.balanced ? "Balanced (< 0.10)" : "Review (≥ 0.10)"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="causal-note">Because assignment was randomized, measured covariates should already be balanced. Propensity-score matching may therefore add little and can reduce precision.</p>
+          </section>
+
+          <section className="panel causal-section">
+            <div className="panel-heading">
+              <div>
+                <h2>Budget allocation</h2>
+                <p>Set the campaign budget and intervention cost to create a constrained customer allocation.</p>
+              </div>
+              <Link className="button button-primary" to="/allocation">
+                Open budget allocation
+              </Link>
+            </div>
+          </section>
 
           <section className="panel causal-section">
             <div className="panel-heading">
               <div>
                 <h2>Customer-level treatment effects</h2>
                 <p>
-                  {result.customers_scored.toLocaleString()} eligible customers scored · {result.customer_rows_returned.toLocaleString()} rows available for filtering
+                  {result.customers_scored.toLocaleString()} eligible customers scored. The table contains {result.customer_rows_returned.toLocaleString()} rows
+                  {result.customers_scored > result.customer_rows_returned
+                    ? ` (20,000-row cap; ${(
+                        result.customers_scored - result.customer_rows_returned
+                      ).toLocaleString()} scored rows are not filterable here).`
+                    : "; filters and pagination cover all scored rows."}
                 </p>
               </div>
               <div className="causal-filters">
@@ -358,7 +472,7 @@ function CausalLab({ datasetId }) {
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
-                  <tr><th>Row ID</th><th>Treatment group</th><th>Estimated ITE</th><th>Effect (percentage points)</th><th>Observed conversion</th></tr>
+                  <tr><th>Row ID</th><th>Treatment group</th><th>Estimated ITE</th><th>90% effect interval</th><th>Effect (percentage points)</th><th>Observed conversion (row outcome only)</th></tr>
                 </thead>
                 <tbody>
                   {visibleCustomers.map((customer) => (
@@ -366,16 +480,18 @@ function CausalLab({ datasetId }) {
                       <td>{customer.row_id}</td>
                       <td>{customer.treatment_group}</td>
                       <td>{customer.ite.toFixed(5)}</td>
+                      <td>{(customer.ite_lower_90 * 100).toFixed(2)} to {(customer.ite_upper_90 * 100).toFixed(2)} pp</td>
                       <td>{customer.effect_percentage_points.toFixed(3)}</td>
                       <td>{customer.conversion}</td>
                     </tr>
                   ))}
                   {!visibleCustomers.length && (
-                    <tr><td colSpan="5">No customers match these filters.</td></tr>
+                    <tr><td colSpan="6">No customers match these filters.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
+            <p className="causal-note">Observed conversion is the individual row’s factual outcome, not its causal effect. ITEs and their intervals estimate counterfactual differences at the population/model level.</p>
             <div className="causal-pagination">
               <span>{filteredCustomers.length.toLocaleString()} matching customers · Page {pageCount ? page + 1 : 0} of {pageCount}</span>
               <div>

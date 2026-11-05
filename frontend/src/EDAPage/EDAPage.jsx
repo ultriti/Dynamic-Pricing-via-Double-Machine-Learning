@@ -242,8 +242,6 @@ function EDAPage() {
     setOverviewError(null);
     setReady(false);
     loadOverview();
-    const [budget, setBudget] = useState(5000);
-    const [targeted, setTargeted] = useState(333);
   };
 
   return (
